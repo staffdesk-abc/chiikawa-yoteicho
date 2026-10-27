@@ -20,13 +20,9 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
     font-family: "Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", "Hiragino Sans", "Yu Gothic", sans-serif; }
-  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 14px 16px 8px; border-bottom: 1px solid var(--line); }
-  h1 { font-size: 20px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 22px; margin: 0; display: flex; align-items: center; gap: 8px; }
   h1 .add { margin-left: auto; }
-  .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
-  .tab { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 14px; white-space: nowrap; cursor: pointer; }
-  .tab.on { background: var(--pink); border-color: var(--pink); color: #fff; font-weight: bold; }
-  .tab .n { opacity: .75; margin-left: 4px; font-size: 12px; }
   main { max-width: 720px; margin: 0 auto; padding: 12px 16px 80px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
   .card.past { opacity: .6; }
@@ -40,14 +36,15 @@
   .badge.lottery { background: var(--blue-soft); }
   .badge.first { background: var(--pink-soft); }
   .badge.done { background: var(--green-soft); }
-  .title { font-size: 17px; font-weight: bold; margin: 2px 0 8px; line-height: 1.4; }
-  .when { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; margin-bottom: 8px; }
+  .title { font-size: 21px; font-weight: bold; margin: 14px 0 10px; line-height: 1.45; }
+  .when { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; margin-bottom: 8px; align-items: baseline; }
   .when dt { color: var(--sub); }
   .when dd { margin: 0; }
   .big { font-size: 18px; font-weight: bold; }
   .left { color: var(--warn); font-weight: bold; margin-left: 6px; font-size: 13px; }
   .detail { font-size: 13px; color: var(--sub); white-space: pre-wrap; line-height: 1.6; margin: 0 0 8px; }
-  .links a { display: block; font-size: 14px; color: var(--blue); word-break: break-all; margin: 4px 0; text-decoration: none; }
+  .links { margin: 18px 0; }
+  .links a { display: block; font-size: 14px; color: var(--blue); word-break: break-all; margin: 8px 0; text-decoration: none; }
   .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   button, .btn { font: inherit; font-size: 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 10px; cursor: pointer; text-decoration: none; }
   .btn.cal { background: var(--blue-soft); border-color: transparent; }
@@ -71,7 +68,6 @@
 <div id="demo" class="demo" hidden>見本の表示です（実際の一覧はスプレッドシートから読み込みます）</div>
 <header>
   <h1>ちいかわ予定帳 <button class="add" onclick="openAdd()">＋追加</button></h1>
-  <div class="tabs" id="tabs"></div>
 </header>
 <main id="list"><p class="empty">読み込み中…</p></main>
 <div id="viewer" onclick="this.style.display='none'"><img alt=""></div>
@@ -100,10 +96,8 @@
 </dialog>
 
 <script>
-const TABS = ['新着', '応募する', '応募済み', 'すべて'];
-const STATUS_BTNS = ['応募する', '応募済み', '見送り'];
+const STATUS_BTNS = ['応募済み', '見送り'];
 let items = [];
-let tab = '新着';
 
 // 置き場所によって読み書きの方法を変える
 // - Apps Script から開いたとき：google.script.run
@@ -188,14 +182,13 @@ function calUrl(it, which) {
     + '&location=' + encodeURIComponent(it.venue || '');
 }
 
+// 1つの一覧に全部並べる。終わったもの・見送ったものは下へ
 function render() {
-  const count = t => items.filter(it => t === 'すべて' || it.status === t).length;
-  document.getElementById('tabs').innerHTML = TABS.map(t =>
-    '<button class="tab' + (t === tab ? ' on' : '') + '" onclick="tab=\'' + t + '\';render()">' + t + '<span class="n">' + count(t) + '</span></button>').join('');
-  const list = items.filter(it => tab === 'すべて' || it.status === tab)
-    .sort((a, b) => (isPast(a) - isPast(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
+  const later = it => isPast(it) || it.status === '見送り';
+  const list = items.slice()
+    .sort((a, b) => (later(a) - later(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
   const el = document.getElementById('list');
-  if (!list.length) { el.innerHTML = '<p class="empty">ここには何もありません</p>'; return; }
+  if (!list.length) { el.innerHTML = '<p class="empty">まだ何もありません</p>'; return; }
   el.innerHTML = list.map(card).join('');
 }
 
@@ -205,8 +198,11 @@ function card(it) {
     '<img src="' + esc(u) + '" loading="lazy" referrerpolicy="no-referrer" onclick="zoom(this.src)" onerror="this.remove()" alt="">').join('') + '</div>' : '';
   const left = daysLeft(it.saleStart);
   const leftDl = daysLeft(it.deadline);
-  return '<article class="card' + (isPast(it) ? ' past' : '') + '">' + imgs + '<div class="body">'
-    + '<div class="badges">' + (it.status === '新着' ? '<span class="badge new">NEW</span>' : '<span class="badge done">' + esc(it.status) + '</span>')
+  const statusBadge = it.status === '応募済み' ? '<span class="badge done">✓ 応募済み</span>'
+    : it.status === '見送り' ? '<span class="badge">見送り</span>'
+    : it.status === '新着' ? '<span class="badge new">NEW</span>' : '';
+  return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + '">' + imgs + '<div class="body">'
+    + '<div class="badges">' + statusBadge
     + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type) + '</span>' : '')
     + (it.venue ? '<span class="badge">' + esc(it.venue) + '</span>' : '') + '</div>'
     + '<div class="title">' + esc(it.title) + '</div>'
@@ -221,7 +217,7 @@ function card(it) {
     + (parseDate(it.saleStart) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'start')) + '">📅 開始をカレンダーへ</a>' : '')
     + (parseDate(it.deadline) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'deadline')) + '">📅 締め切りをカレンダーへ</a>' : '')
     + '</div><div class="row">'
-    + STATUS_BTNS.map(s => '<button class="st' + (it.status === s ? ' on' : '') + '" onclick="setStatus(\'' + it.id + '\',\'' + s + '\')">' + s + '</button>').join('')
+    + STATUS_BTNS.map(s => '<button class="st' + (it.status === s ? ' on' : '') + '" onclick="setStatus(\'' + it.id + '\',\'' + s + '\')">' + (it.status === s ? '✓ ' : '') + s + '</button>').join('')
     + '</div>'
     + (it.source ? '<div class="src">情報元：' + esc(it.source) + '</div>' : '')
     + '</div></article>';
@@ -274,7 +270,7 @@ document.getElementById('addForm').addEventListener('submit', async ev => {
   document.getElementById('addBtn').disabled = true;
   document.getElementById('addMsg').textContent = '保存しています…';
   api.call('addItem', data, files).then(() => {
-    f.reset(); addDlg.close(); tab = '新着'; load();
+    f.reset(); addDlg.close(); load();
   }).catch(e => {
     document.getElementById('addMsg').textContent = '保存できませんでした：' + (e.message || e);
   }).finally(() => { document.getElementById('addBtn').disabled = false; });
@@ -292,7 +288,7 @@ function demoApi() {
     period: '2026/11/21(土)〜12/25(金)',
     detail: 'ローソンチケットで販売。抽選先行はなし・先着順。各回の2日前まで販売。\n要ローチケ会員登録（無料）。お食事券付き予約整理券／お食事券付きBOXシート席予約整理券。\n手数料：システム利用料330円/枚、電子チケットサービス料110円/枚（キャリア決済は別途330円/件）。\n12/26以降の分は後日案内。',
     images: ['https://image.parco.jp/SCCWEB/image/cafe/store/storage/w1078xh604/event_cname_20250625174123.jpg'],
-    links: ['予約（ローチケ） https://l-tike.com/event/mevent/?mid=704741', 'メニュー・グッズ・アクセス（PARCO CAFE） https://cafe.parco.jp/event/chiikawarestaurant_tokyo?area=029439'],
+    links: ['予約（ローチケ） https://l-tike.com/event/mevent/?mid=704741', 'メニュー https://cafe.parco.jp/event/chiikawarestaurant_tokyo?area=029439', 'グッズ https://cafe.parco.jp/event/chiikawarestaurant_tokyo?area=029439', 'アクセス https://cafe.parco.jp/event/chiikawarestaurant_tokyo?area=029439'],
     source: '公式の販売スケジュール画像（2026/10/27更新）',
   }];
   return {
