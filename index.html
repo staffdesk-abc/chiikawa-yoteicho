@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ちいかわ予定帳</title>
+<style>
+  :root {
+    --bg: #fff8f3; --card: #ffffff; --ink: #4a3b36; --sub: #8a7a73; --line: #f0e2da;
+    --pink: #f29bb0; --pink-soft: #fde6ec; --blue: #7cb7e8; --blue-soft: #e4f1fb;
+    --green: #8cc9a0; --green-soft: #e5f4ea; --gray-soft: #f1ece9; --warn: #e2725b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #221c1a; --card: #2e2624; --ink: #f3e9e4; --sub: #b8a9a2; --line: #433834;
+      --pink-soft: #4a2c35; --blue-soft: #233a4d; --green-soft: #26402f; --gray-soft: #3a312e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", "Hiragino Sans", "Yu Gothic", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 14px 16px 8px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 20px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  h1 .add { margin-left: auto; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .tab { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+  .tab.on { background: var(--pink); border-color: var(--pink); color: #fff; font-weight: bold; }
+  .tab .n { opacity: .75; margin-left: 4px; font-size: 12px; }
+  main { max-width: 720px; margin: 0 auto; padding: 12px 16px 80px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
+  .card.past { opacity: .6; }
+  .imgs { display: flex; gap: 6px; overflow-x: auto; background: var(--gray-soft); }
+  .imgs img { height: 180px; max-width: 100%; object-fit: cover; cursor: zoom-in; flex: 0 0 auto; }
+  .imgs img:only-child { width: 100%; height: auto; max-height: 280px; }
+  .body { padding: 12px 14px 14px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--gray-soft); }
+  .badge.new { background: var(--pink); color: #fff; font-weight: bold; }
+  .badge.lottery { background: var(--blue-soft); }
+  .badge.first { background: var(--pink-soft); }
+  .badge.done { background: var(--green-soft); }
+  .title { font-size: 17px; font-weight: bold; margin: 2px 0 8px; line-height: 1.4; }
+  .when { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; margin-bottom: 8px; }
+  .when dt { color: var(--sub); }
+  .when dd { margin: 0; }
+  .big { font-size: 18px; font-weight: bold; }
+  .left { color: var(--warn); font-weight: bold; margin-left: 6px; font-size: 13px; }
+  .detail { font-size: 13px; color: var(--sub); white-space: pre-wrap; line-height: 1.6; margin: 0 0 8px; }
+  .links a { display: block; font-size: 14px; color: var(--blue); word-break: break-all; margin: 4px 0; text-decoration: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  button, .btn { font: inherit; font-size: 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 10px; cursor: pointer; text-decoration: none; }
+  .btn.cal { background: var(--blue-soft); border-color: transparent; }
+  .st.on { background: var(--pink); color: #fff; border-color: var(--pink); }
+  .add { background: var(--pink); color: #fff; border: none; font-weight: bold; }
+  .src { font-size: 11px; color: var(--sub); margin-top: 8px; }
+  .empty { text-align: center; color: var(--sub); padding: 40px 0; }
+  .demo { background: #fff3c4; color: #6b5a00; font-size: 12px; text-align: center; padding: 4px; }
+  #viewer { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 20; }
+  #viewer img { max-width: 100%; max-height: 100%; }
+  dialog { border: none; border-radius: 16px; width: min(560px, calc(100% - 24px)); background: var(--card); color: var(--ink); padding: 16px; }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog label { display: block; font-size: 13px; color: var(--sub); margin: 10px 0 4px; }
+  dialog input, dialog textarea, dialog select { width: 100%; font: inherit; font-size: 15px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  dialog textarea { min-height: 70px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .msg { font-size: 13px; color: var(--sub); }
+</style>
+</head>
+<body>
+<div id="demo" class="demo" hidden>見本の表示です（実際の一覧はスプレッドシートから読み込みます）</div>
+<header>
+  <h1>ちいかわ予定帳 <button class="add" onclick="openAdd()">＋追加</button></h1>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="list"><p class="empty">読み込み中…</p></main>
+<div id="viewer" onclick="this.style.display='none'"><img alt=""></div>
+
+<dialog id="addDlg">
+  <form id="addForm" method="dialog">
+    <b>情報を追加</b>
+    <label>タイトル *</label><input name="title" required placeholder="例：ちいかわレストラン 予約整理券（12月分）">
+    <div class="two">
+      <div><label>会場</label><input name="venue" placeholder="池袋PARCO"></div>
+      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option></select></div>
+    </div>
+    <div class="two">
+      <div><label>販売・受付開始 *</label><input name="saleStart" type="datetime-local" required></div>
+      <div><label>締め切り</label><input name="deadline" type="datetime-local"></div>
+    </div>
+    <label>対象期間</label><input name="period" placeholder="2026/12/26〜2027/1/31">
+    <label>内容</label><textarea name="detail"></textarea>
+    <label>リンク（1行に1つ。「グッズ https://…」のように前に名前を書けます）</label><textarea name="links"></textarea>
+    <label>画像の URL（1行に1つ）</label><textarea name="imageUrls"></textarea>
+    <label>画像ファイル（告知画像のスクショなど）</label><input name="files" type="file" accept="image/*" multiple>
+    <label>情報元（X のポストの URL など）</label><input name="source">
+    <div class="row"><button type="submit" class="add" id="addBtn">追加する</button><button type="button" onclick="addDlg.close()">やめる</button></div>
+    <p class="msg" id="addMsg"></p>
+  </form>
+</dialog>
+
+<script>
+const TABS = ['新着', '応募する', '応募済み', 'すべて'];
+const STATUS_BTNS = ['応募する', '応募済み', '見送り'];
+let items = [];
+let tab = '新着';
+
+// 置き場所によって読み書きの方法を変える
+// - Apps Script から開いたとき：google.script.run
+// - Google の外（GitHub Pages など）に置いたとき：URL の #key= を合言葉にして、スクリプトの窓口（doPost）を呼ぶ
+// - どちらでもないとき（手元の見本）：例のデータ
+const API_URL = 'https://script.google.com/macros/s/AKfycbwP3oZCrGb73u2hdwKMLGH0ouRfoq7b5VsPf_1pdtZzjHcwh7ReRYFlsrRIhaxkEu7u/exec';
+const IN_GAS = typeof google !== 'undefined' && google.script;
+const APP_KEY = IN_GAS ? '<?= appKey ?>' : hashKey();
+const DEMO = !IN_GAS && !APP_KEY;
+const api = DEMO ? demoApi() : IN_GAS ? {
+  call(name, ...args) {
+    return new Promise((ok, ng) => google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[name](APP_KEY, ...args));
+  }
+} : {
+  async call(name, ...args) {
+    // text/plain にすると事前の確認（CORS のプリフライト）が起きず、Apps Script でも受け取れる
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ key: APP_KEY, action: name, args }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    return json.data;
+  }
+};
+
+// 合言葉は URL の # のあと（サーバーには送られない）。ホーム画面から開いたときのために端末にも覚えておく
+function hashKey() {
+  const m = location.hash.match(/key=([\w-]+)/);
+  try {
+    if (m) localStorage.setItem('chiikawa-key', m[1]);
+    return m ? m[1] : localStorage.getItem('chiikawa-key') || '';
+  } catch (e) {
+    return m ? m[1] : '';
+  }
+}
+
+function load() {
+  api.call('getItems').then(list => { items = list; render(); })
+    .catch(e => { document.getElementById('list').innerHTML = '<p class="empty">読み込めませんでした：' + esc(e.message || e) + '</p>'; });
+}
+
+function parseDate(s) {
+  const m = String(s || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})(?:\D+(\d{1,2}):(\d{2}))?/);
+  return m ? new Date(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) : null;
+}
+const WD = '日月火水木金土';
+function fmt(s) {
+  const d = parseDate(s);
+  if (!d) return esc(s);
+  const t = (d.getHours() || d.getMinutes()) ? ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') : '';
+  return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + '(' + WD[d.getDay()] + ')' + t;
+}
+function daysLeft(s) {
+  const d = parseDate(s);
+  if (!d) return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const day = new Date(d); day.setHours(0, 0, 0, 0);
+  const n = Math.round((day - today) / 86400000);
+  if (d < new Date()) return '';
+  return n === 0 ? '今日！' : n === 1 ? '明日' : 'あと' + n + '日';
+}
+function isPast(it) {
+  const end = parseDate(it.deadline) || parseDate(it.saleStart);
+  return end && end < new Date() || it.status === '終了';
+}
+
+function calUrl(it, which) {
+  const s = which === 'deadline' ? it.deadline : it.saleStart;
+  const d = parseDate(s);
+  const p = n => String(n).padStart(2, '0');
+  const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
+  const end = new Date(d.getTime() + 30 * 60000);
+  const label = which === 'deadline' ? '【締切】' : (it.type === '抽選' ? '【抽選受付開始】' : it.type === '先着' ? '【先着販売開始】' : '【開始】');
+  const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(label + it.title)
+    + '&dates=' + f(d) + '/' + f(end) + '&ctz=Asia/Tokyo'
+    + '&details=' + encodeURIComponent(details)
+    + '&location=' + encodeURIComponent(it.venue || '');
+}
+
+function render() {
+  const count = t => items.filter(it => t === 'すべて' || it.status === t).length;
+  document.getElementById('tabs').innerHTML = TABS.map(t =>
+    '<button class="tab' + (t === tab ? ' on' : '') + '" onclick="tab=\'' + t + '\';render()">' + t + '<span class="n">' + count(t) + '</span></button>').join('');
+  const list = items.filter(it => tab === 'すべて' || it.status === tab)
+    .sort((a, b) => (isPast(a) - isPast(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
+  const el = document.getElementById('list');
+  if (!list.length) { el.innerHTML = '<p class="empty">ここには何もありません</p>'; return; }
+  el.innerHTML = list.map(card).join('');
+}
+
+function card(it) {
+  const typeCls = it.type === '抽選' ? 'lottery' : it.type === '先着' ? 'first' : '';
+  const imgs = it.images.length ? '<div class="imgs">' + it.images.map(u =>
+    '<img src="' + esc(u) + '" loading="lazy" referrerpolicy="no-referrer" onclick="zoom(this.src)" onerror="this.remove()" alt="">').join('') + '</div>' : '';
+  const left = daysLeft(it.saleStart);
+  const leftDl = daysLeft(it.deadline);
+  return '<article class="card' + (isPast(it) ? ' past' : '') + '">' + imgs + '<div class="body">'
+    + '<div class="badges">' + (it.status === '新着' ? '<span class="badge new">NEW</span>' : '<span class="badge done">' + esc(it.status) + '</span>')
+    + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type) + '</span>' : '')
+    + (it.venue ? '<span class="badge">' + esc(it.venue) + '</span>' : '') + '</div>'
+    + '<div class="title">' + esc(it.title) + '</div>'
+    + '<dl class="when">'
+    + '<dt>開始</dt><dd><span class="big">' + fmt(it.saleStart) + '</span>' + (left ? '<span class="left">' + left + '</span>' : '') + '</dd>'
+    + (it.deadline ? '<dt>締め切り</dt><dd>' + fmt(it.deadline) + (leftDl ? '<span class="left">' + leftDl + '</span>' : '') + '</dd>' : '')
+    + (it.period ? '<dt>対象期間</dt><dd>' + esc(it.period) + '</dd>' : '')
+    + '</dl>'
+    + (it.detail ? '<p class="detail">' + esc(it.detail) + '</p>' : '')
+    + '<div class="links">' + it.links.map(linkHtml).join('') + '</div>'
+    + '<div class="row">'
+    + (parseDate(it.saleStart) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'start')) + '">📅 開始をカレンダーへ</a>' : '')
+    + (parseDate(it.deadline) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'deadline')) + '">📅 締め切りをカレンダーへ</a>' : '')
+    + '</div><div class="row">'
+    + STATUS_BTNS.map(s => '<button class="st' + (it.status === s ? ' on' : '') + '" onclick="setStatus(\'' + it.id + '\',\'' + s + '\')">' + s + '</button>').join('')
+    + '</div>'
+    + (it.source ? '<div class="src">情報元：' + esc(it.source) + '</div>' : '')
+    + '</div></article>';
+}
+
+// リンクの行は「メニュー https://…」のように、URL の前に名前を書いてもよい
+const LINK_ICONS = [['予約', '🎫'], ['抽選', '🎫'], ['チケット', '🎫'], ['グッズ', '🛍️'], ['メニュー', '🍽️'], ['アクセス', '🗺️'], ['公式', '🐹']];
+function linkHtml(line) {
+  const m = line.match(/^(.*?)\s*(https?:\/\/\S+)$/);
+  if (!m) return '';
+  const label = m[1].replace(/[：:｜|]\s*$/, '').trim();
+  const icon = label && (LINK_ICONS.find(([w]) => label.includes(w)) || [, '🔗'])[1];
+  const text = label ? icon + ' ' + label + ' ↗' : linkName(m[2]);
+  return '<a href="' + esc(m[2]) + '" target="_blank" rel="noopener">' + esc(text) + '</a>';
+}
+
+function linkName(u) {
+  if (u.includes('l-tike.com')) return '🎫 ローチケのページ ↗';
+  if (u.includes('parco.jp')) return '🏬 PARCO のページ ↗';
+  if (u.includes('x.com') || u.includes('twitter.com')) return '🐦 X のポスト ↗';
+  if (u.includes('chiikawa')) return '🐹 ちいかわ公式 ↗';
+  return u.replace(/^https?:\/\//, '').slice(0, 40) + ' ↗';
+}
+
+function setStatus(id, s) {
+  const it = items.find(x => x.id === id);
+  const next = it.status === s ? '新着' : s;
+  it.status = next; render();
+  api.call('setStatus', id, next).catch(e => { alert('保存できませんでした：' + (e.message || e)); load(); });
+}
+
+function zoom(src) {
+  const v = document.getElementById('viewer');
+  v.querySelector('img').src = src;
+  v.style.display = 'flex';
+}
+
+function openAdd() { document.getElementById('addMsg').textContent = ''; addDlg.showModal(); }
+
+document.getElementById('addForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  const data = Object.fromEntries(new FormData(f).entries());
+  delete data.files;
+  const files = await Promise.all([...f.files.files].map(file => new Promise(ok => {
+    const r = new FileReader();
+    r.onload = () => ok({ name: file.name, type: file.type, data: r.result.split(',')[1] });
+    r.readAsDataURL(file);
+  })));
+  document.getElementById('addBtn').disabled = true;
+  document.getElementById('addMsg').textContent = '保存しています…';
+  api.call('addItem', data, files).then(() => {
+    f.reset(); addDlg.close(); tab = '新着'; load();
+  }).catch(e => {
+    document.getElementById('addMsg').textContent = '保存できませんでした：' + (e.message || e);
+  }).finally(() => { document.getElementById('addBtn').disabled = false; });
+});
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+function demoApi() {
+  document.getElementById('demo').hidden = false;
+  const data = [{
+    id: 'demo1', status: '新着', title: 'ちいかわレストラン 事前予約整理券（11/21〜12/25分）',
+    venue: '池袋PARCO 本館7F', type: '先着', saleStart: '2026/11/01 12:00', deadline: '',
+    period: '2026/11/21(土)〜12/25(金)',
+    detail: 'ローソンチケットで販売。抽選先行はなし・先着順。各回の2日前まで販売。\n要ローチケ会員登録（無料）。お食事券付き予約整理券／お食事券付きBOXシート席予約整理券。\n手数料：システム利用料330円/枚、電子チケットサービス料110円/枚（キャリア決済は別途330円/件）。\n12/26以降の分は後日案内。',
+    images: ['https://image.parco.jp/SCCWEB/image/cafe/store/storage/w1078xh604/event_cname_20250625174123.jpg'],
+    links: ['予約（ローチケ） https://l-tike.com/event/mevent/?mid=704741', 'メニュー・グッズ・アクセス（PARCO CAFE） https://cafe.parco.jp/event/chiikawarestaurant_tokyo?area=029439'],
+    source: '公式の販売スケジュール画像（2026/10/27更新）',
+  }];
+  return {
+    call(name, ...args) {
+      if (name === 'getItems') return Promise.resolve(JSON.parse(JSON.stringify(data)));
+      if (name === 'setStatus') { data.find(x => x.id === args[0]).status = args[1]; }
+      if (name === 'addItem') { const d = args[0]; data.push({ id: 'd' + Date.now(), status: '新着', images: (d.imageUrls || '').split('\n').filter(Boolean), links: (d.links || '').split('\n').filter(Boolean), ...d }); }
+      return Promise.resolve();
+    }
+  };
+}
+
+load();
+</script>
+</body>
+</html>
