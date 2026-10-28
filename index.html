@@ -58,6 +58,8 @@
   .tabs button { flex: 1 0 auto; font-size: 15px; padding: 8px 10px; white-space: nowrap; }
   .fav { margin-left: auto; background: none; border: none; font-size: 22px; line-height: 1; padding: 0 2px; color: var(--sub); }
   .fav.on { color: #f5b301; }
+  .sortrow { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--sub); }
+  .sortrow select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
   .tabs button.on { background: var(--pink); color: #fff; border-color: var(--pink); font-weight: bold; }
   .src { font-size: 11px; color: var(--sub); margin-top: 8px; }
   .empty { text-align: center; color: var(--sub); padding: 40px 0; }
@@ -84,6 +86,13 @@
     <button data-view="trend" onclick="setView('trend')">🔥 トレンド</button>
     <button data-view="fav" onclick="setView('fav')">⭐ お気に入り</button>
   </nav>
+  <div class="sortrow">並べ方
+    <select id="sort" onchange="setSort(this.value)">
+      <option value="start">販売・受付の開始が近い順</option>
+      <option value="newest">情報が新しい順</option>
+      <option value="deadline">締め切りが近い順</option>
+    </select>
+  </div>
 </header>
 <main id="list"><p class="empty">読み込み中…</p></main>
 <div id="viewer" onclick="this.style.display='none'"><img alt=""></div>
@@ -244,12 +253,30 @@ function lineUrl(it) {
   return "https://line.me/R/share?text=" + encodeURIComponent(text);
 }
 
-// 1つの一覧に全部並べる。終わったもの・見送ったものは下へ
+// 並べ方（この端末に覚える）。どの並べ方でも、終わったもの・見送ったものは下へ
+let sortBy = 'start';
+try { sortBy = localStorage.getItem('chiikawa-sort') || 'start'; } catch (e) {}
+function setSort(v) {
+  sortBy = v;
+  try { localStorage.setItem('chiikawa-sort', v); } catch (e) {}
+  render();
+}
+const time = s => { const d = parseDate(s); return d ? d.getTime() : null; };
+// 値がないものは後ろ
+const asc = (x, y) => x === y ? 0 : x === null ? 1 : y === null ? -1 : x - y;
+const SORTS = {
+  start: (a, b) => asc(time(a.saleStart), time(b.saleStart)),
+  newest: (a, b) => { const x = time(a.createdAt), y = time(b.createdAt); return x === y ? 0 : x === null ? 1 : y === null ? -1 : y - x; },
+  deadline: (a, b) => asc(time(a.deadline), time(b.deadline)) || asc(time(a.saleStart), time(b.saleStart)),
+};
+
+// 1つの一覧に全部並べる
 function render() {
   const later = it => isPast(it) || it.status === '見送り';
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  document.getElementById('sort').value = sortBy;
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
-    .sort((a, b) => (later(a) - later(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
+    .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
   if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', interest: '気になる情報はまだありません', trend: 'トレンドの情報はまだありません', fav: '☆ を押したものがここに集まります' }[view] || 'まだ何もありません') + '</p>'; return; }
   el.innerHTML = list.map(card).join('');
