@@ -183,8 +183,11 @@ function daysLeft(s) {
   if (d < new Date()) return '';
   return n === 0 ? '今日！' : n === 1 ? '明日' : 'あと' + n + '日';
 }
+// 締め切りがあれば締め切りまで。締め切りがない（在庫がなくなり次第など）ときは、開始から2週間は終わったものにしない
 function isPast(it) {
-  const end = parseDate(it.deadline) || parseDate(it.saleStart);
+  const dl = parseDate(it.deadline);
+  const start = parseDate(it.saleStart);
+  const end = dl || (start && new Date(start.getTime() + 14 * 86400000));
   return end && end < new Date() || it.status === '終了';
 }
 
