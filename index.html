@@ -75,6 +75,7 @@
   <nav class="tabs">
     <button data-view="event" onclick="setView('event')">🎪 イベント</button>
     <button data-view="goods" onclick="setView('goods')">🛍️ グッズ</button>
+    <button data-view="interest" onclick="setView('interest')">👀 気になる</button>
   </nav>
 </header>
 <main id="list"><p class="empty">読み込み中…</p></main>
@@ -86,7 +87,7 @@
     <label>タイトル *</label><input name="title" required placeholder="例：ちいかわレストラン 予約整理券（12月分）">
     <div class="two">
       <div><label>会場</label><input name="venue" placeholder="池袋PARCO"></div>
-      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option></select></div>
+      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option><option>気になる抽選</option><option>気になる先着</option><option>気になるグッズ</option><option>気になるその他</option></select></div>
     </div>
     <div class="two">
       <div><label>販売・受付開始 *</label><input name="saleStart" type="datetime-local" required></div>
@@ -106,10 +107,12 @@
 <script>
 const STATUS_BTNS = ['応募済み', '見送り'];
 let items = [];
-// 種別が「グッズ〜」のものはグッズの一覧に出す（スプレッドシートは1つのまま）
-const isGoods = it => /^グッズ/.test(it.type || '');
+// 種別の頭で一覧を分ける（スプレッドシートは1つのまま）
+// 「グッズ〜」→ グッズ、「気になる〜」→ ちいかわ以外の気になるもの、それ以外 → イベント
+const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^気になる/.test(it.type || '') ? 'interest' : 'event';
+const VIEWS = ['event', 'goods', 'interest'];
 let view = 'event';
-try { view = localStorage.getItem('chiikawa-view') === 'goods' ? 'goods' : 'event'; } catch (e) {}
+try { const v = localStorage.getItem('chiikawa-view'); if (VIEWS.includes(v)) view = v; } catch (e) {}
 
 function setView(v) {
   view = v;
@@ -191,7 +194,7 @@ function calUrl(it, which) {
   const p = n => String(n).padStart(2, '0');
   const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
   const end = new Date(d.getTime() + 30 * 60000);
-  const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : it.type === 'グッズ新商品' ? '【発売】' : '【開始】');
+  const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ/.test(it.type) ? '【発売】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&text=' + encodeURIComponent(label + it.title)
@@ -214,10 +217,10 @@ function lineUrl(it) {
 function render() {
   const later = it => isPast(it) || it.status === '見送り';
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
-  const list = items.filter(it => isGoods(it) === (view === 'goods'))
+  const list = items.filter(it => viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
   const el = document.getElementById('list');
-  if (!list.length) { el.innerHTML = '<p class="empty">' + (view === 'goods' ? 'グッズの情報はまだありません' : 'まだ何もありません') + '</p>'; return; }
+  if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', interest: '気になる情報はまだありません' }[view] || 'まだ何もありません') + '</p>'; return; }
   el.innerHTML = list.map(card).join('');
 }
 
@@ -232,7 +235,7 @@ function card(it) {
     : it.status === '新着' ? '<span class="badge new">NEW</span>' : '';
   return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + '">' + imgs + '<div class="body">'
     + '<div class="badges">' + statusBadge
-    + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type) + '</span>' : '')
+    + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type.replace(/^気になる/, '')) + '</span>' : '')
     + (it.venue ? '<span class="badge">' + esc(it.venue) + '</span>' : '') + '</div>'
     + '<div class="title">' + esc(it.title) + '</div>'
     + '<dl class="when">'
@@ -287,7 +290,7 @@ function zoom(src) {
 
 function openAdd() {
   document.getElementById('addMsg').textContent = '';
-  document.querySelector('#addForm [name=type]').value = view === 'goods' ? 'グッズ抽選' : '抽選';
+  document.querySelector('#addForm [name=type]').value = ({ goods: 'グッズ抽選', interest: '気になる抽選' }[view] || '抽選');
   addDlg.showModal();
 }
 
