@@ -60,6 +60,10 @@
   .fav.on { color: #f5b301; }
   .sortrow { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--sub); }
   .sortrow select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
+  #list.slide-l { animation: slideL .2s ease-out; }
+  #list.slide-r { animation: slideR .2s ease-out; }
+  @keyframes slideL { from { transform: translateX(40px); opacity: .3; } }
+  @keyframes slideR { from { transform: translateX(-40px); opacity: .3; } }
   .tabs button.on { background: var(--pink); color: #fff; border-color: var(--pink); font-weight: bold; }
   .src { font-size: 11px; color: var(--sub); margin-top: 8px; }
   .empty { text-align: center; color: var(--sub); padding: 40px 0; }
@@ -144,6 +148,29 @@ function setView(v) {
   try { localStorage.setItem('chiikawa-view', v); } catch (e) {}
   render();
 }
+
+// スマホ：一覧を横にスワイプすると隣の切り替えへ（画像の横スクロールと切り替えのボタンの上では動かさない）
+let touch0 = null;
+document.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  touch0 = e.touches.length === 1 && !e.target.closest('.imgs, .tabs, dialog, input, textarea, select') ? { x: t.clientX, y: t.clientY } : null;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!touch0) return;
+  const t = e.changedTouches[0], dx = t.clientX - touch0.x, dy = t.clientY - touch0.y;
+  touch0 = null;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  const i = VIEWS.indexOf(view) + (dx < 0 ? 1 : -1);
+  if (i < 0 || i >= VIEWS.length) return;
+  setView(VIEWS[i]);
+  window.scrollTo(0, 0);
+  const on = document.querySelector('.tabs button.on');
+  if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+  const list = document.getElementById('list');
+  list.classList.remove('slide-l', 'slide-r');
+  void list.offsetWidth;
+  list.classList.add(dx < 0 ? 'slide-l' : 'slide-r');
+}, { passive: true });
 
 // 置き場所によって読み書きの方法を変える
 // - Apps Script から開いたとき：google.script.run
