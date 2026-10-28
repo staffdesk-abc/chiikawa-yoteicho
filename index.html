@@ -48,6 +48,7 @@
   .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   button, .btn { font: inherit; font-size: 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 7px 10px; cursor: pointer; text-decoration: none; }
   .btn.cal { background: var(--blue-soft); border-color: transparent; }
+  .btn.line { background: #06c755; color: #fff; border-color: transparent; }
   .st.on { background: var(--pink); color: #fff; border-color: var(--pink); }
   .add { background: var(--pink); color: #fff; border: none; font-weight: bold; }
   .src { font-size: 11px; color: var(--sub); margin-top: 8px; }
@@ -182,6 +183,16 @@ function calUrl(it, which) {
     + '&location=' + encodeURIComponent(it.venue || '');
 }
 
+// LINE で送る文。アプリの URL（合言葉つき）は入れない
+function lineUrl(it) {
+  const text = [it.title,
+    it.saleStart && "開始：" + fmt(it.saleStart),
+    it.deadline && "締め切り：" + fmt(it.deadline),
+    it.period && "対象期間：" + it.period,
+    ...(it.links || [])].filter(Boolean).join("\n");
+  return "https://line.me/R/share?text=" + encodeURIComponent(text);
+}
+
 // 1つの一覧に全部並べる。終わったもの・見送ったものは下へ
 function render() {
   const later = it => isPast(it) || it.status === '見送り';
@@ -216,6 +227,7 @@ function card(it) {
     + '<div class="row">'
     + (parseDate(it.saleStart) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'start')) + '">📅 開始をカレンダーへ</a>' : '')
     + (parseDate(it.deadline) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'deadline')) + '">📅 締め切りをカレンダーへ</a>' : '')
+    + '<a class="btn line" target="_blank" href="' + esc(lineUrl(it)) + '">LINE で送る</a>'
     + '</div><div class="row">'
     + STATUS_BTNS.map(s => '<button class="st' + (it.status === s ? ' on' : '') + '" onclick="setStatus(\'' + it.id + '\',\'' + s + '\')">' + (it.status === s ? '✓ ' : '') + s + '</button>').join('')
     + '</div>'
