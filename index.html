@@ -193,7 +193,7 @@ function calUrl(it, which) {
   const d = parseDate(s);
   const p = n => String(n).padStart(2, '0');
   const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
-  const end = new Date(d.getTime() + 30 * 60000);
+  const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
   const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ/.test(it.type) ? '【発売】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
