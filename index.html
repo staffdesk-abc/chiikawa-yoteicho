@@ -25,7 +25,10 @@
   h1 .add { margin-left: auto; }
   main { max-width: 720px; margin: 0 auto; padding: 12px 16px 80px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
-  .card.past { opacity: .6; }
+  .card.past { background: var(--gray-soft); }
+  .card.past .imgs { filter: grayscale(.6); opacity: .8; }
+  .card.past .title, .card.past .big { color: var(--sub); }
+  .badge.end { background: #9b8f89; color: #fff; }
   .imgs { display: flex; gap: 6px; overflow-x: auto; background: var(--gray-soft); }
   .imgs img { height: 180px; max-width: 100%; object-fit: cover; cursor: zoom-in; flex: 0 0 auto; }
   .imgs img:only-child { width: 100%; height: auto; max-height: 280px; }
@@ -76,6 +79,7 @@
     <button data-view="event" onclick="setView('event')">🎪 イベント</button>
     <button data-view="goods" onclick="setView('goods')">🛍️ グッズ</button>
     <button data-view="interest" onclick="setView('interest')">👀 気になる</button>
+    <button data-view="trend" onclick="setView('trend')">🔥 トレンド</button>
   </nav>
 </header>
 <main id="list"><p class="empty">読み込み中…</p></main>
@@ -87,7 +91,7 @@
     <label>タイトル *</label><input name="title" required placeholder="例：ちいかわレストラン 予約整理券（12月分）">
     <div class="two">
       <div><label>会場</label><input name="venue" placeholder="池袋PARCO"></div>
-      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option><option>気になる抽選</option><option>気になる先着</option><option>気になるグッズ</option><option>気になるその他</option></select></div>
+      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option><option>気になる抽選</option><option>気になる先着</option><option>気になるグッズ</option><option>気になるその他</option><option>トレンド抽選</option><option>トレンド先着</option><option>トレンドその他</option></select></div>
     </div>
     <div class="two">
       <div><label>販売・受付開始 *</label><input name="saleStart" type="datetime-local" required></div>
@@ -108,9 +112,9 @@
 const STATUS_BTNS = ['応募済み', '見送り'];
 let items = [];
 // 種別の頭で一覧を分ける（スプレッドシートは1つのまま）
-// 「グッズ〜」→ グッズ、「気になる〜」→ ちいかわ以外の気になるもの、それ以外 → イベント
-const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^気になる/.test(it.type || '') ? 'interest' : 'event';
-const VIEWS = ['event', 'goods', 'interest'];
+// 「グッズ〜」→ グッズ、「気になる〜」→ ちいかわ以外の気になるもの、「トレンド〜」→ 話題のもの、それ以外 → イベント
+const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^気になる/.test(it.type || '') ? 'interest' : /^トレンド/.test(it.type || '') ? 'trend' : 'event';
+const VIEWS = ['event', 'goods', 'interest', 'trend'];
 let view = 'event';
 try { const v = localStorage.getItem('chiikawa-view'); if (VIEWS.includes(v)) view = v; } catch (e) {}
 
@@ -183,12 +187,24 @@ function daysLeft(s) {
   if (d < new Date()) return '';
   return n === 0 ? '今日！' : n === 1 ? '明日' : 'あと' + n + '日';
 }
-// 締め切りがあれば締め切りまで。締め切りがない（在庫がなくなり次第など）ときは、開始から2週間は終わったものにしない
+// 終わったもの＝締め切りを過ぎた、または対象期間が終わった。どちらもないものは終わりにしない
 function isPast(it) {
+  const now = new Date();
   const dl = parseDate(it.deadline);
-  const start = parseDate(it.saleStart);
-  const end = dl || (start && new Date(start.getTime() + 14 * 86400000));
-  return end && end < new Date() || it.status === '終了';
+  const pe = periodEnd(it.period, it.saleStart);
+  return it.status === '終了' || !!(dl && dl < now) || !!(pe && pe < now);
+}
+
+// 対象期間「2026/11/21(土)〜12/25(金)」の終わりの日（その日の終わり）。年がなければ前の日付の年から決める
+function periodEnd(p, saleStart) {
+  const parts = String(p || '').split(/[〜~～]/);
+  if (parts.length < 2) return null;
+  const startY = (parts[0].match(/(\d{4})\D/) || [])[1] || (parseDate(saleStart) || new Date()).getFullYear();
+  const startM = +((parts[0].match(/(?:\d{4}\D)?(\d{1,2})\D(\d{1,2})/) || [])[1] || 0);
+  const m = parts[parts.length - 1].match(/(?:(\d{4})\D)?(\d{1,2})\D(\d{1,2})/);
+  if (!m) return null;
+  const y = m[1] ? +m[1] : +startY + (+m[2] < startM ? 1 : 0);
+  return new Date(y, m[2] - 1, +m[3], 23, 59, 59);
 }
 
 function calUrl(it, which) {
@@ -223,7 +239,7 @@ function render() {
   const list = items.filter(it => viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || ((parseDate(a.saleStart) || 0) - (parseDate(b.saleStart) || 0)));
   const el = document.getElementById('list');
-  if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', interest: '気になる情報はまだありません' }[view] || 'まだ何もありません') + '</p>'; return; }
+  if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', interest: '気になる情報はまだありません', trend: 'トレンドの情報はまだありません' }[view] || 'まだ何もありません') + '</p>'; return; }
   el.innerHTML = list.map(card).join('');
 }
 
@@ -233,12 +249,12 @@ function card(it) {
     '<img src="' + esc(u) + '" loading="lazy" referrerpolicy="no-referrer" onclick="zoom(this.src)" onerror="this.remove()" alt="">').join('') + '</div>' : '';
   const left = daysLeft(it.saleStart);
   const leftDl = daysLeft(it.deadline);
-  const statusBadge = it.status === '応募済み' ? '<span class="badge done">✓ 応募済み</span>'
+  const statusBadge = (isPast(it) ? '<span class="badge end">終了</span>' : '') + (it.status === '応募済み' ? '<span class="badge done">✓ 応募済み</span>'
     : it.status === '見送り' ? '<span class="badge">見送り</span>'
-    : it.status === '新着' ? '<span class="badge new">NEW</span>' : '';
+    : it.status === '新着' && !isPast(it) ? '<span class="badge new">NEW</span>' : '');
   return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + '">' + imgs + '<div class="body">'
     + '<div class="badges">' + statusBadge
-    + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type.replace(/^気になる/, '')) + '</span>' : '')
+    + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type.replace(/^(気になる|トレンド)/, '')) + '</span>' : '')
     + (it.venue ? '<span class="badge">' + esc(it.venue) + '</span>' : '') + '</div>'
     + '<div class="title">' + esc(it.title) + '</div>'
     + '<dl class="when">'
@@ -293,7 +309,7 @@ function zoom(src) {
 
 function openAdd() {
   document.getElementById('addMsg').textContent = '';
-  document.querySelector('#addForm [name=type]').value = ({ goods: 'グッズ抽選', interest: '気になる抽選' }[view] || '抽選');
+  document.querySelector('#addForm [name=type]').value = ({ goods: 'グッズ抽選', interest: '気になる抽選', trend: 'トレンドその他' }[view] || '抽選');
   addDlg.showModal();
 }
 
