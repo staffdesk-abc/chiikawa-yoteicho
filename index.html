@@ -101,6 +101,7 @@
       <option value="0">1つ目のアカウント</option>
       <option value="1">2つ目のアカウント</option>
       <option value="2">3つ目のアカウント</option>
+      <option value="mail">メールアドレスで指定…</option>
     </select>
   </div>
 </header>
@@ -269,8 +270,9 @@ function calUrl(it, which) {
   const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
   const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ/.test(it.type) ? '【発売】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
-  return 'https://calendar.google.com/calendar/u/' + calU + '/r/eventedit?'
-    + 'text=' + encodeURIComponent(label + it.title)
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&authuser=' + encodeURIComponent(calU)
+    + '&text=' + encodeURIComponent(label + it.title)
     + '&dates=' + f(d) + '/' + f(end) + '&ctz=Asia/Tokyo'
     + '&details=' + encodeURIComponent(details)
     + '&location=' + encodeURIComponent(it.venue || '');
@@ -294,10 +296,15 @@ function setSort(v) {
   try { localStorage.setItem('chiikawa-sort', v); } catch (e) {}
   render();
 }
-// カレンダーを開く Google アカウント（calendar.google.com/calendar/u/◯。この端末に覚える）
+// カレンダーを開く Google アカウント（ログイン順の番号かメールアドレス。この端末だけに覚える）
 let calU = '0';
 try { calU = localStorage.getItem('chiikawa-cal-u') || '0'; } catch (e) {}
 function setCalU(v) {
+  if (v === 'mail') {
+    const m = (prompt('カレンダーを開く Google アカウントのメールアドレス', /@/.test(calU) ? calU : '') || '').trim();
+    if (!/^[^@\s]+@[^@\s]+$/.test(m)) { render(); return; }
+    v = m;
+  }
   calU = v;
   try { localStorage.setItem('chiikawa-cal-u', v); } catch (e) {}
   render();
@@ -316,7 +323,13 @@ function render() {
   const later = it => isPast(it) || it.status === '見送り';
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   document.getElementById('sort').value = sortBy;
-  document.getElementById('calu').value = calU;
+  const cs = document.getElementById('calu');
+  let mo = cs.querySelector('option.mailset');
+  if (/@/.test(calU)) {
+    if (!mo) { mo = document.createElement('option'); mo.className = 'mailset'; cs.insertBefore(mo, cs.lastElementChild); }
+    mo.value = mo.textContent = calU;
+  } else if (mo) mo.remove();
+  cs.value = calU;
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
