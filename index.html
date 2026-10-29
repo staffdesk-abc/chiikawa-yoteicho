@@ -58,7 +58,7 @@
   .tabs button { flex: 1 0 auto; font-size: 15px; padding: 8px 10px; white-space: nowrap; }
   .fav { margin-left: auto; background: none; border: none; font-size: 22px; line-height: 1; padding: 0 2px; color: var(--sub); }
   .fav.on { color: #f5b301; }
-  .sortrow { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--sub); }
+  .sortrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--sub); }
   .sortrow select { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
   #list.slide-l { animation: slideL .2s ease-out; }
   #list.slide-r { animation: slideR .2s ease-out; }
@@ -95,6 +95,12 @@
       <option value="start">販売・受付の開始が近い順</option>
       <option value="newest">情報が新しい順</option>
       <option value="deadline">締め切りが近い順</option>
+    </select>
+    カレンダー
+    <select id="calu" onchange="setCalU(this.value)">
+      <option value="0">1つ目のアカウント</option>
+      <option value="1">2つ目のアカウント</option>
+      <option value="2">3つ目のアカウント</option>
     </select>
   </div>
 </header>
@@ -263,8 +269,8 @@ function calUrl(it, which) {
   const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
   const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ/.test(it.type) ? '【発売】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-    + '&text=' + encodeURIComponent(label + it.title)
+  return 'https://calendar.google.com/calendar/u/' + calU + '/r/eventedit?'
+    + 'text=' + encodeURIComponent(label + it.title)
     + '&dates=' + f(d) + '/' + f(end) + '&ctz=Asia/Tokyo'
     + '&details=' + encodeURIComponent(details)
     + '&location=' + encodeURIComponent(it.venue || '');
@@ -288,6 +294,14 @@ function setSort(v) {
   try { localStorage.setItem('chiikawa-sort', v); } catch (e) {}
   render();
 }
+// カレンダーを開く Google アカウント（calendar.google.com/calendar/u/◯。この端末に覚える）
+let calU = '0';
+try { calU = localStorage.getItem('chiikawa-cal-u') || '0'; } catch (e) {}
+function setCalU(v) {
+  calU = v;
+  try { localStorage.setItem('chiikawa-cal-u', v); } catch (e) {}
+  render();
+}
 const time = s => { const d = parseDate(s); return d ? d.getTime() : null; };
 // 値がないものは後ろ
 const asc = (x, y) => x === y ? 0 : x === null ? 1 : y === null ? -1 : x - y;
@@ -302,6 +316,7 @@ function render() {
   const later = it => isPast(it) || it.status === '見送り';
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   document.getElementById('sort').value = sortBy;
+  document.getElementById('calu').value = calU;
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
