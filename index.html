@@ -98,9 +98,8 @@
     </select>
     カレンダー
     <select id="calu" onchange="setCalU(this.value)">
-      <option value="0">1つ目のアカウント</option>
-      <option value="1">2つ目のアカウント</option>
-      <option value="2">3つ目のアカウント</option>
+      <option value="1">まみゅ</option>
+      <option value="2">ばびゅ</option>
       <option value="mail">メールアドレスで指定…</option>
     </select>
   </div>
@@ -297,8 +296,10 @@ function setSort(v) {
   render();
 }
 // カレンダーを開く Google アカウント（ログイン順の番号かメールアドレス。この端末だけに覚える）
-let calU = '0';
-try { calU = localStorage.getItem('chiikawa-cal-u') || '0'; } catch (e) {}
+// まみゅ＝ログイン順の2つ目（u/1）、ばびゅ＝3つ目（u/2）。順番が違う端末はメールアドレスで指定する
+let calU = '1';
+try { calU = localStorage.getItem('chiikawa-cal-u') || '1'; } catch (e) {}
+if (calU === '0') calU = '1';
 function setCalU(v) {
   if (v === 'mail') {
     const m = (prompt('カレンダーを開く Google アカウントのメールアドレス', /@/.test(calU) ? calU : '') || '').trim();
