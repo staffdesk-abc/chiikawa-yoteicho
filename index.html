@@ -100,6 +100,22 @@
   .total .cnt { font-size: 13px; }
   .total button { margin-left: auto; background: #fff; color: var(--pink); border: none; font-weight: bold; }
   .total button:disabled { opacity: .6; }
+  .mi.pick { align-items: flex-start; padding: 10px; }
+  .mi.pick .ck { margin-top: 36px; }
+  .mi.pick img { width: 104px; height: 104px; border-radius: 12px; cursor: zoom-in; }
+  .mi.pick .nm { font-weight: bold; }
+  .mi .ds { display: block; font-size: 12px; font-weight: normal; color: var(--sub); line-height: 1.5; margin-top: 3px; }
+  .mi .nt { display: block; font-size: 11px; font-weight: normal; color: var(--warn); margin-top: 3px; }
+  .mi .ft { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; min-height: 30px; }
+  .mi .ft .pr { font-size: 16px; font-weight: bold; }
+  .mi .tax { font-size: 11px; font-weight: normal; color: var(--sub); }
+  .artrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+  .artk { font-size: 11px; font-weight: normal; color: var(--sub); width: 100%; }
+  .art { display: inline-block; border-radius: 50%; background-repeat: no-repeat; border: 2px solid transparent; flex: 0 0 auto; }
+  .artrow .art { cursor: pointer; border-color: var(--line); }
+  .artrow .art.sel { border-color: var(--pink); box-shadow: 0 0 0 2px var(--pink); }
+  .arts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .art.none { width: 40px; height: 40px; font-size: 9px; font-weight: normal; color: var(--sub); border: 1px dashed var(--sub); display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
   .orderlist .mi img { width: 44px; height: 44px; }
   .orderlist .mi .nm { font-size: 18px; font-weight: bold; }
   .note { font-size: 11px; color: var(--sub); margin-top: 14px; line-height: 1.6; }
@@ -496,51 +512,53 @@ const SHOPS = {
     name: 'ちいかわベーカリー（東京）',
     url: 'https://chiikawabakery.jp/menu/',
     checked: '2026/11/1',
-    // [画像の番号, 名前, 値段（税込）, 分類, ひとこと]（OSAKA 限定は入れない）
+    // [画像の番号, 名前, 値段（税込）, 分類, 公式の説明, 注意]（OSAKA 限定は入れない）
     menu: [
-      [92, 'ちいかわパン（黒猫）', 660, '期間限定', '栗あん・なくなり次第終了'],
-      [93, 'ハチワレパン（黒猫）', 660, '期間限定', 'ほうじ茶クリーム・なくなり次第終了'],
-      [94, 'うさぎパン（黒猫）', 660, '期間限定', 'かぼちゃあん・なくなり次第終了'],
-      [1, 'ちいかわパン', 590, 'パン', 'カスタードクリーム'],
-      [2, 'ハチワレパン', 590, 'パン', 'チョコレートクリーム'],
-      [3, 'うさぎパン', 590, 'パン', 'キャラメルクリーム'],
-      [80, 'モモンガパン', 590, 'パン', 'いちごとマスカルポーネ'],
-      [81, '古本屋パン', 590, 'パン', 'オレンジとマスカルポーネ'],
-      [49, 'さすまたスティックパイ（ちいかわ）', 620, 'パン'],
-      [50, 'さすまたスティックパイ（ハチワレ）', 620, 'パン'],
-      [51, '討伐棒チーズパン', 570, 'パン'],
-      [12, 'ちいかわ食パン', 950, 'パン', 'はちみつ'],
-      [52, 'ハチワレ食パン', 950, 'パン', 'チョコ'],
-      [53, 'うさぎ食パン', 950, 'パン', 'チーズ'],
-      [13, 'ちいかわ豆食パン', 580, 'パン', '東京限定'],
-      [14, 'ちいかわコロッケバーガー', 670, 'パン', '東京限定'],
-      [15, '郎パン', 2380, 'パン', 'スーベニアどんぶり付き'],
-      [54, 'くりまんじゅうのおつまみカリカリラスク', 650, 'パン'],
-      [16, 'カブトムシワッフル', 480, 'パン', '東京限定'],
-      [17, 'くりまんじゅうパン', 480, 'パン'],
-      [18, 'フィナンシェなトリオ', 990, 'パン'],
-      [37, 'フィナンシェなトリオ（抹茶）', 990, 'パン'],
-      [36, 'フィナンシェなトリオ（チョコ）', 990, 'パン'],
-      [47, '報酬袋焼き', 590, 'パン', 'あんバター'],
-      [48, 'くまさんポシェットパン', 590, 'パン'],
-      [55, 'ちいかわラスク（バターシュガー）', 320, 'パン'],
-      [56, 'ちいかわラスク（メイプルシナモン）', 320, 'パン'],
-      [57, 'ちいかわラスク（うまカレー（鬼））', 320, 'パン'],
-      [91, 'ランチボックス（S）', 770, 'スーベニア', 'パン1つにつき1点まで・食パンは対象外'],
-      [97, 'ランチボックス（M）', 1540, 'スーベニア', 'パン1つにつき1点まで・食パンは対象外'],
-      [95, 'パンプキンスープ', 790, 'ドリンク', '期間限定・なくなり次第終了'],
+      [92, 'ちいかわパン（黒猫）', 660, '期間限定', '栗あんがつまった秋限定のちいかわパン', '10/2（金）〜なくなり次第終了'],
+      [93, 'ハチワレパン（黒猫）', 660, '期間限定', 'ほうじ茶クリームがつまった秋限定のハチワレパン', '10/2（金）〜なくなり次第終了'],
+      [94, 'うさぎパン（黒猫）', 660, '期間限定', 'かぼちゃあんがつまった秋限定のうさぎパン', '10/2（金）〜なくなり次第終了'],
+      [1, 'ちいかわパン', 590, 'パン', 'カスタードクリームがつまったちいかわパン'],
+      [2, 'ハチワレパン', 590, 'パン', 'チョコレートクリームがつまったハチワレパン'],
+      [3, 'うさぎパン', 590, 'パン', 'キャラメルクリームがつまったうさぎパン'],
+      [80, 'モモンガパン', 590, 'パン', 'いちご果肉と北海道産マスカルポーネのフルーツクリームがつまったモモンガパン'],
+      [81, '古本屋パン', 590, 'パン', 'オレンジ果皮と北海道産マスカルポーネのフルーツクリームがつまった古本屋パン'],
+      [49, 'さすまたスティックパイ（ちいかわ）', 620, 'パン', 'ヤーッ!! シュガーに包まれたちいかわの甘いさすまたスティックパイ'],
+      [50, 'さすまたスティックパイ（ハチワレ）', 620, 'パン', 'ヤーッ!! シュガーに包まれたハチワレの甘いさすまたスティックパイ'],
+      [51, '討伐棒チーズパン', 570, 'パン', 'ハァ!! チーズが入っている討伐棒チーズパン'],
+      [12, 'ちいかわ食パン', 950, 'パン', 'はちみつが練りこまれた、ほんのり甘いちいかわ食パン'],
+      [52, 'ハチワレ食パン', 950, 'パン', 'チョコが練りこまれた、ほんのり甘いハチワレ食パン'],
+      [53, 'うさぎ食パン', 950, 'パン', 'チーズが練りこまれた、ほんのり塩味があるうさぎ食パン'],
+      [13, 'ちいかわ豆食パン', 580, 'パン', 'かのこ豆とくるみが入った、かわいらしいサイズのにっこりしたちいかわ豆食パン', 'ちいかわベーカリー(東京)限定'],
+      [14, 'ちいかわコロッケバーガー', 670, 'パン', '牛肉コロッケとチェダーチーズをサンドした食べ応えのあるちいかわバーガー', 'ちいかわベーカリー(東京)限定'],
+      [15, '郎パン', 2380, 'パン', '『ちいかわ』に登場する「郎」で提供されるラーメンをイメージした食事系パン', 'スーベニアどんぶり付き'],
+      [54, 'くりまんじゅうのおつまみカリカリラスク', 650, 'パン', '思わずハァ〜ッ…と言いたくなるニンニクカラメなガーリック味のラスク'],
+      [16, 'カブトムシワッフル', 480, 'パン', 'ほんのりはちみつ風味とアーモンドプラリネの食感がおいしいカブトムシのワッフル', 'ちいかわベーカリー(東京)限定'],
+      [17, 'くりまんじゅうパン', 480, 'パン', '栗あんのつまった食べ応えのある食感のくりまんじゅうパン'],
+      [18, 'フィナンシェなトリオ', 990, 'パン', 'ちいかわ・ハチワレ・うさぎのバターが香るしっとりフィナンシェ'],
+      [37, 'フィナンシェなトリオ（抹茶）', 990, 'パン', 'ちいかわ・ハチワレ・うさぎの抹茶味のしっとりフィナンシェ'],
+      [36, 'フィナンシェなトリオ（チョコ）', 990, 'パン', 'ちいかわ・ハチワレ・うさぎのチョコ味のしっとりフィナンシェ'],
+      [47, '報酬袋焼き', 590, 'パン', '中にあんバター（報酬）が入ってる！報酬袋焼き'],
+      [48, 'くまさんポシェットパン', 590, 'パン', 'フランボワーズソースがはいったメロンパン風ポシェットパン'],
+      [55, 'ちいかわラスク（バターシュガー）', 320, 'パン', 'バターの香ばしさと甘みが絶妙なバターシュガー味のラスク'],
+      [56, 'ちいかわラスク（パンケーキ風メイプルシナモン）', 320, 'パン', 'ナッツを使用したメイプルシナモン味のラスク'],
+      [57, 'ちいかわラスク（うまカレー（鬼））', 320, 'パン', 'ピリ辛がクセになるカレー味のラスク'],
+      [91, 'ランチボックス（S）', 770, 'スーベニア', 'パンカウンターにてパンを購入されるお客様のみご購入いただけます。', 'パン1つご購入につき1点まで・食パンは対象外'],
+      [97, 'ランチボックス（M）', 1540, 'スーベニア', 'パンカウンターにてパンを購入されるお客様のみご購入いただけます。', 'パン1つご購入につき1点まで・食パンは対象外'],
+      [95, 'パンプキンスープ', 790, 'ドリンク', '', '期間限定・10/2（金）〜なくなり次第終了'],
       [76, 'ドリンクボトル（ちいかわ）', 1500, 'ドリンク'],
       [77, 'ドリンクボトル（ハチワレ）', 1500, 'ドリンク'],
       [78, 'ドリンクボトル（うさぎ）', 1500, 'ドリンク'],
       [28, 'アイスコーヒー', 590, 'ドリンク'],
       [29, 'アイスティー', 590, 'ドリンク'],
       [30, 'アイスカフェラテ', 690, 'ドリンク'],
-      [70, 'ホットカフェラテ', 690, 'ドリンク', 'ラテアート7種から選べる'],
-      [61, 'ホットコーヒー／ホットティー', 590, 'ドリンク'],
-    ].map(([n, name, price, sec, note]) => ({ id: 'b' + n, img: BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, note: note || '' })),
+      [70, 'ホットカフェラテ', 690, 'ドリンク', 'ラテアート7種からお好きな絵柄をお選びいただけます。'],
+      [61, 'ホットコーヒー/ホットティー', 590, 'ドリンク'],
+    ].map(([n, name, price, sec, desc, note]) => ({ id: 'b' + n, img: BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, desc: desc || '', note: note || '' })),
+    // ホットカフェラテのラテアート：公式の写真（1000×667）の上に並ぶ7つの丸を切り抜いて出す
+    arts: { b70: { img: BK + '70.jpg', w: 1000, h: 667, d: 122, cy: 79, cx: [80, 221, 362, 503, 644, 784, 940] } },
   },
 };
-let order = { shop: 'bakery', step: 'pick', qty: {} };
+let order = { shop: 'bakery', step: 'pick', qty: {}, art: {} };
 try { order = Object.assign(order, JSON.parse(localStorage.getItem('chiikawa-order') || '{}')); } catch (e) {}
 let shown = null; // 注文の画面に出している品（そこで ✅ を外しても行は残し、押し直せるようにする）
 function saveOrder() { try { localStorage.setItem('chiikawa-order', JSON.stringify(order)); } catch (e) {} }
@@ -559,8 +577,22 @@ function setStep(step) {
   shown = null;
   saveOrder(); window.scrollTo(0, 0); renderOrder();
 }
-function setShop(v) { order.shop = v; order.qty = {}; setStep('pick'); }
-function clearOrder() { if (confirm('✅ をすべて外しますか？')) { order.qty = {}; setStep('pick'); } }
+function setShop(v) { order.shop = v; order.qty = {}; order.art = {}; setStep('pick'); }
+function clearOrder() { if (confirm('✅ をすべて外しますか？')) { order.qty = {}; order.art = {}; setStep('pick'); } }
+// k 杯目の絵柄を i にする（同じものをもう一度押すと選び直し）
+function setArt(id, k, i, ev) {
+  ev.stopPropagation();
+  const a = order.art[id] = order.art[id] || [];
+  a[k] = a[k] === i ? null : i;
+  saveOrder(); renderOrder();
+}
+// 写真の i 番目の丸を、直径 size px の丸として切り抜く
+function artDot(art, i, size, cls, click) {
+  const s = size / art.d;
+  return '<span class="art' + (cls ? ' ' + cls : '') + '"' + (click ? ' onclick="' + click + '"' : '') + ' style="width:' + size + 'px;height:' + size + 'px;'
+    + 'background-image:url(\'' + art.img + '\');background-size:' + (art.w * s).toFixed(1) + 'px ' + (art.h * s).toFixed(1) + 'px;'
+    + 'background-position:' + (-(art.cx[i] - art.d / 2) * s).toFixed(1) + 'px ' + (-(art.cy - art.d / 2) * s).toFixed(1) + 'px"></span>';
+}
 
 function renderOrder() {
   document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
@@ -568,16 +600,31 @@ function renderOrder() {
   const picked = menu.filter(m => order.qty[m.id]);
   const sum = picked.reduce((a, m) => a + m.price * order.qty[m.id], 0);
   const cnt = picked.reduce((a, m) => a + order.qty[m.id], 0);
+  const img = m => '<img src="' + esc(m.img) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.visibility=\'hidden\'"'
+    + ' onclick="event.stopPropagation();zoom(this.src)">';
+  // 注文の画面：小さい画像・名前・値段。ラテアートは選んだ絵柄を並べる
   const row = (m, big) => {
-    const q = order.qty[m.id] || 0;
-    return '<div class="mi' + (q ? ' on' : big ? ' off' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
-      + '<div class="ck">' + (q ? '✓' : '') + '</div>'
-      + '<img src="' + esc(m.img) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.visibility=\'hidden\'">'
-      + '<div class="nm">' + esc(m.name) + (m.note && !big ? '<small>' + esc(m.note) + '</small>' : '') + '</div>'
-      + (big ? '<div class="pr">' + (q > 1 ? '×' + q + ' ' : '') + yen(m.price * (q || 1)) + '</div>'
-        : q ? '<div class="qty"><button onclick="addQty(\'' + m.id + '\',-1,event)">−</button><b>' + q + '</b><button onclick="addQty(\'' + m.id + '\',1,event)">＋</button></div>'
-        : '<div class="pr">' + yen(m.price) + '</div>')
-      + '</div>';
+    const q = order.qty[m.id] || 0, art = (shop.arts || {})[m.id];
+    if (big) {
+      const chosen = art ? (order.art[m.id] || []).slice(0, q) : [];
+      return '<div class="mi' + (q ? ' on' : ' off') + '" onclick="toggleItem(\'' + m.id + '\')">'
+        + '<div class="ck">' + (q ? '✓' : '') + '</div>' + img(m)
+        + '<div class="nm">' + esc(m.name)
+        + (art && q ? '<span class="arts">' + Array.from({ length: q }, (_, k) => chosen[k] != null ? artDot(art, chosen[k], 40) : '<span class="art none">絵柄<br>未定</span>').join('') + '</span>' : '')
+        + '</div>'
+        + '<div class="pr">' + (q > 1 ? '×' + q + ' ' : '') + yen(m.price * (q || 1)) + '</div></div>';
+    }
+    // メニューの画面：大きい画像・公式の説明・税込の値段
+    const arts = art && q ? Array.from({ length: q }, (_, k) => '<div class="artrow"><span class="artk">' + (q > 1 ? (k + 1) + '杯目' : '絵柄') + '</span>'
+      + art.cx.map((_, i) => artDot(art, i, 36, (order.art[m.id] || [])[k] === i ? 'sel' : '', 'setArt(\'' + m.id + '\',' + k + ',' + i + ',event)')).join('') + '</div>').join('') : '';
+    return '<div class="mi pick' + (q ? ' on' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
+      + '<div class="ck">' + (q ? '✓' : '') + '</div>' + img(m)
+      + '<div class="nm">' + esc(m.name)
+      + (m.desc ? '<span class="ds">' + esc(m.desc) + '</span>' : '')
+      + (m.note ? '<span class="nt">※' + esc(m.note) + '</span>' : '')
+      + '<div class="ft"><span class="pr">' + yen(m.price) + '<span class="tax">（税込）</span></span>'
+      + (q ? '<span class="qty"><button onclick="addQty(\'' + m.id + '\',-1,event)">−</button><b>' + q + '</b><button onclick="addQty(\'' + m.id + '\',1,event)">＋</button></span>' : '')
+      + '</div>' + arts + '</div></div>';
   };
   const el = document.getElementById('list');
   if (order.step === 'list') {
@@ -592,7 +639,7 @@ function renderOrder() {
   el.innerHTML = '<div class="shoprow">お店 <select onchange="setShop(this.value)">'
       + Object.keys(SHOPS).map(k => '<option value="' + k + '"' + (k === order.shop ? ' selected' : '') + '>' + esc(SHOPS[k].name) + '</option>').join('')
       + '</select><a href="' + esc(shop.url) + '" target="_blank" rel="noopener">公式メニュー</a></div>'
-    + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点</span><button onclick="setStep(\'list\')"' + (cnt ? '' : ' disabled') + '>注文画面へ ›</button></div>'
+    + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'list\')"' + (cnt ? '' : ' disabled') + '>注文画面へ ›</button></div>'
     + menu.map(m => (m.sec !== sec ? '<div class="msec">' + esc(sec = m.sec) + '</div>' : '') + row(m, false)).join('')
     + '<p class="note">値段は税込（公式メニュー ' + esc(shop.checked) + ' 確認）。品切れや値段が変わることがあるので、お店で確かめてください。</p>';
 }
