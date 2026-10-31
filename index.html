@@ -79,6 +79,10 @@
   .msg { font-size: 13px; color: var(--sub); }
   /* 購入表 */
   .sortrow[hidden] { display: none; }
+  .whobar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .whobar button { font-size: 15px; padding: 7px 16px; border-radius: 999px; }
+  .whobar button.on { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: bold; }
+  #sync { font-size: 11px; color: var(--sub); margin-left: 4px; }
   .shoprow { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--sub); }
   .shoprow select { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
   .shoprow a { margin-left: auto; color: var(--blue); text-decoration: none; white-space: nowrap; }
@@ -204,6 +208,7 @@ function setView(v) {
   view = v;
   try { localStorage.setItem('chiikawa-view', v); } catch (e) {}
   render();
+  if (v === 'order') pullOrder();
 }
 
 // スマホ：一覧を横にスワイプすると隣の切り替えへ（画像の横スクロールと切り替えのボタンの上では動かさない）
@@ -270,7 +275,9 @@ function hashKey() {
 // ホーム画面から開いたままでも、アプリに戻ったら一覧を読み直す（1分以内なら読み直さない）
 let loadedAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && Date.now() - loadedAt > 60000) load();
+  if (document.visibilityState !== 'visible') return;
+  if (view === 'order') pullOrder();
+  if (Date.now() - loadedAt > 60000) load();
 });
 
 function load() {
@@ -560,10 +567,73 @@ const SHOPS = {
     arts: { b70: { img: BK + '70.jpg', w: 1000, h: 667, d: 120, cy: 79, cx: [77, 218, 359, 500, 641, 781, 937] } },
   },
 };
-let order = { shop: 'bakery', step: 'pick', qty: {}, art: {} };
-try { order = Object.assign(order, JSON.parse(localStorage.getItem('chiikawa-order') || '{}')); } catch (e) {}
+// 購入表は人ごと（まみゅ・ばびゅ）に分けて、端末とスクリプト（ORDER_<who>）の両方に保存する。
+// 別の端末で開いても、新しいほう（at が大きいほう）を使う
+const WHO = { mamyu: 'まみゅ', babyu: 'ばびゅ' };
+let who = 'mamyu';
+try { who = localStorage.getItem('chiikawa-order-who') || (calU === '2' ? 'babyu' : 'mamyu'); } catch (e) {}
+if (!WHO[who]) who = 'mamyu';
+let order, orderStep = 'pick', sync = '';
+try { orderStep = localStorage.getItem('chiikawa-order-step') || 'pick'; } catch (e) {}
+function readLocalOrder() {
+  order = { shop: 'bakery', qty: {}, art: {}, at: 0 };
+  try {
+    const old = localStorage.getItem('chiikawa-order'); // 人ごとに分ける前の保存はまみゅの分にする
+    if (old && !localStorage.getItem('chiikawa-order-mamyu')) localStorage.setItem('chiikawa-order-mamyu', old);
+    localStorage.removeItem('chiikawa-order');
+    const o = JSON.parse(localStorage.getItem('chiikawa-order-' + who) || '{}');
+    order = Object.assign(order, { shop: o.shop || 'bakery', qty: o.qty || {}, art: o.art || {}, at: o.at || 0 });
+  } catch (e) {}
+}
+readLocalOrder();
 let shown = null; // 注文の画面に出している品（そこで ✅ を外しても行は残し、押し直せるようにする）
-function saveOrder() { try { localStorage.setItem('chiikawa-order', JSON.stringify(order)); } catch (e) {} }
+const orderJson = () => JSON.stringify({ shop: order.shop, qty: order.qty, art: order.art, at: order.at });
+const putTimers = {};
+function saveOrder() {
+  order.at = Date.now();
+  try { localStorage.setItem('chiikawa-order-' + who, orderJson()); } catch (e) {}
+  putOrderSoon();
+}
+function putOrderSoon() {
+  if (DEMO) return;
+  // 送るのはこの時点の中身（すぐに人を切り替えても、それぞれの分が正しく届く）
+  const w = who, json = orderJson();
+  clearTimeout(putTimers[w]);
+  sync = 'saving';
+  putTimers[w] = setTimeout(() => {
+    api.call('putOrder', w, json).then(() => { if (w === who) sync = 'saved'; }, () => { if (w === who) sync = 'local'; }).then(syncLabel);
+  }, 800);
+}
+// スクリプトに保存されたほうが新しければ、そちらを出す
+function pullOrder() {
+  if (DEMO) return;
+  const w = who;
+  api.call('getOrder', w).then(json => {
+    if (w !== who) return;
+    sync = 'saved';
+    const o = json ? JSON.parse(json) : null;
+    if (o && (o.at || 0) > (order.at || 0)) {
+      order = { shop: o.shop || 'bakery', qty: o.qty || {}, art: o.art || {}, at: o.at };
+      try { localStorage.setItem('chiikawa-order-' + who, orderJson()); } catch (e) {}
+      shown = null;
+      if (view === 'order') renderOrder();
+    } else if (o ? order.at > (o.at || 0) : Object.keys(order.qty).length) { // 端末のほうが新しければ送り直す
+      order.at = order.at || Date.now(); // 時刻のない古い保存にも時刻を付けて、ほかの端末で新しいと分かるようにする
+      putOrderSoon();
+    }
+    syncLabel();
+  }).catch(() => { sync = 'local'; syncLabel(); });
+}
+function syncLabel() {
+  const el = document.getElementById('sync');
+  if (el) el.textContent = { saving: '保存中…', saved: '☁ 保存済み（ほかの端末でも出せます）', local: 'この端末だけに保存中（スクリプトの更新が必要）' }[DEMO ? '' : sync] || '';
+}
+function setWho(w) {
+  who = w;
+  try { localStorage.setItem('chiikawa-order-who', w); } catch (e) {}
+  readLocalOrder(); shown = null; sync = '';
+  renderOrder(); pullOrder();
+}
 const shopMenu = () => (SHOPS[order.shop] || SHOPS.bakery).menu;
 const yen = n => '¥' + n.toLocaleString('ja-JP');
 
@@ -575,12 +645,13 @@ function addQty(id, d, ev) {
   saveOrder(); renderOrder();
 }
 function setStep(step) {
-  order.step = step;
+  orderStep = step;
   shown = null;
-  saveOrder(); window.scrollTo(0, 0); renderOrder();
+  try { localStorage.setItem('chiikawa-order-step', step); } catch (e) {}
+  window.scrollTo(0, 0); renderOrder();
 }
-function setShop(v) { order.shop = v; order.qty = {}; order.art = {}; setStep('pick'); }
-function clearOrder() { if (confirm('✅ をすべて外しますか？')) { order.qty = {}; order.art = {}; setStep('pick'); } }
+function setShop(v) { order.shop = v; order.qty = {}; order.art = {}; saveOrder(); setStep('pick'); }
+function clearOrder() { if (confirm(WHO[who] + 'の ✅ をすべて外しますか？')) { order.qty = {}; order.art = {}; saveOrder(); setStep('pick'); } }
 // k 杯目の絵柄を i にする（同じものをもう一度押すと選び直し）
 function setArt(id, k, i, ev) {
   ev.stopPropagation();
@@ -629,25 +700,31 @@ function renderOrder() {
       + '</div></div>' + arts + '</div>';
   };
   const el = document.getElementById('list');
-  el.classList.toggle('wide', order.step !== 'list'); // メニューは横に広く（パソコン4列・スマホ2列）、注文画面は縦1列
-  if (order.step === 'list') {
+  // だれの購入表か（まみゅ・ばびゅで別々に保存）
+  const whoBar = '<div class="whobar">' + Object.keys(WHO).map(k => '<button class="' + (k === who ? 'on' : '') + '" onclick="setWho(\'' + k + '\')">' + WHO[k] + '</button>').join('')
+    + '<span id="sync"></span></div>';
+  el.classList.toggle('wide', orderStep !== 'list'); // メニューは横に広く（パソコン4列・スマホ2列）、注文画面は縦1列
+  if (orderStep === 'list') {
     if (!shown) shown = picked.map(m => m.id);
     const rows = menu.filter(m => shown.includes(m.id));
-    el.innerHTML = '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'pick\')">‹ メニューへ</button></div>'
+    el.innerHTML = whoBar + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'pick\')">‹ メニューへ</button></div>'
       + '<div class="orderlist">' + (rows.length ? rows.map(m => row(m, true)).join('') : '<p class="empty">✅ を付けたものはありません</p>') + '</div>'
       + '<div class="row"><button onclick="clearOrder()">✅ をすべて外す</button></div>';
+    syncLabel();
     return;
   }
-  el.innerHTML = '<div class="shoprow">お店 <select onchange="setShop(this.value)">'
+  el.innerHTML = whoBar + '<div class="shoprow">お店 <select onchange="setShop(this.value)">'
       + Object.keys(SHOPS).map(k => '<option value="' + k + '"' + (k === order.shop ? ' selected' : '') + '>' + esc(SHOPS[k].name) + '</option>').join('')
       + '</select><a href="' + esc(shop.url) + '" target="_blank" rel="noopener">公式メニュー</a></div>'
     + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'list\')"' + (cnt ? '' : ' disabled') + '>注文画面へ ›</button></div>'
     + [...new Set(menu.map(m => m.sec))].map(s => '<div class="msec">' + esc(s) + '</div><div class="mgrid">'
       + menu.filter(m => m.sec === s).map(m => row(m, false)).join('') + '</div>').join('')
     + '<p class="note">値段は税込（公式メニュー ' + esc(shop.checked) + ' 確認）。品切れや値段が変わることがあるので、お店で確かめてください。</p>';
+  syncLabel();
 }
 
 load();
+if (view === 'order') pullOrder();
 </script>
 </body>
 </html>
