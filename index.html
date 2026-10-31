@@ -77,6 +77,32 @@
   dialog textarea { min-height: 70px; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .msg { font-size: 13px; color: var(--sub); }
+  /* 購入表 */
+  .sortrow[hidden] { display: none; }
+  .shoprow { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--sub); }
+  .shoprow select { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); }
+  .shoprow a { margin-left: auto; color: var(--blue); text-decoration: none; white-space: nowrap; }
+  .msec { font-size: 14px; font-weight: bold; color: var(--sub); margin: 18px 0 8px; }
+  .mi { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; user-select: none; }
+  .mi img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: 0 0 auto; background: var(--gray-soft); }
+  .mi .nm { flex: 1; min-width: 0; font-size: 15px; line-height: 1.35; }
+  .mi .nm small { display: block; font-size: 11px; color: var(--sub); }
+  .mi .pr { font-size: 14px; white-space: nowrap; }
+  .mi .ck { width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--line); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+  .mi.on { border-color: var(--pink); background: var(--pink-soft); }
+  .mi.on .ck { background: var(--pink); border-color: var(--pink); }
+  .mi.off { opacity: .45; } .mi.off .nm { text-decoration: line-through; }
+  .qty { display: flex; align-items: center; gap: 4px; }
+  .qty button { width: 30px; height: 30px; padding: 0; font-size: 17px; }
+  .qty b { min-width: 18px; text-align: center; }
+  .total { position: sticky; top: var(--hdr, 0px); z-index: 4; background: var(--pink); color: #fff; border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .total .yen { font-size: 28px; font-weight: bold; }
+  .total .cnt { font-size: 13px; }
+  .total button { margin-left: auto; background: #fff; color: var(--pink); border: none; font-weight: bold; }
+  .total button:disabled { opacity: .6; }
+  .orderlist .mi img { width: 44px; height: 44px; }
+  .orderlist .mi .nm { font-size: 18px; font-weight: bold; }
+  .note { font-size: 11px; color: var(--sub); margin-top: 14px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -89,6 +115,7 @@
     <button data-view="interest" onclick="setView('interest')">👀 気になる</button>
     <button data-view="trend" onclick="setView('trend')">🔥 トレンド</button>
     <button data-view="fav" onclick="setView('fav')">⭐ お気に入り</button>
+    <button data-view="order" onclick="setView('order')">🧾 購入表</button>
   </nav>
   <div class="sortrow">並べ方
     <select id="sort" onchange="setSort(this.value)">
@@ -136,7 +163,7 @@ let items = [];
 // 種別の頭で一覧を分ける（スプレッドシートは1つのまま）
 // 「グッズ〜」→ グッズ、「気になる〜」→ ちいかわ以外の気になるもの、「トレンド〜」→ 話題のもの、それ以外 → イベント
 const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^気になる/.test(it.type || '') ? 'interest' : /^トレンド/.test(it.type || '') ? 'trend' : 'event';
-const VIEWS = ['event', 'goods', 'interest', 'trend', 'fav'];
+const VIEWS = ['event', 'goods', 'interest', 'trend', 'fav', 'order'];
 
 // お気に入りはこの端末だけに覚える（2人それぞれ別）
 let favs = new Set();
@@ -216,9 +243,16 @@ function hashKey() {
   }
 }
 
+// ホーム画面から開いたままでも、アプリに戻ったら一覧を読み直す（1分以内なら読み直さない）
+let loadedAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - loadedAt > 60000) load();
+});
+
 function load() {
+  loadedAt = Date.now();
   api.call('getItems').then(list => { items = list; render(); })
-    .catch(e => { document.getElementById('list').innerHTML = '<p class="empty">読み込めませんでした：' + esc(e.message || e) + '</p>'; });
+    .catch(e => { if (view !== 'order') document.getElementById('list').innerHTML = '<p class="empty">読み込めませんでした：' + esc(e.message || e) + '</p>'; });
 }
 
 function parseDate(s) {
@@ -331,6 +365,8 @@ function render() {
     mo.value = mo.textContent = calU;
   } else if (mo) mo.remove();
   cs.value = calU;
+  document.querySelector('.sortrow').hidden = view === 'order';
+  if (view === 'order') { renderOrder(); return; }
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
@@ -451,6 +487,114 @@ function demoApi() {
       return Promise.resolve();
     }
   };
+}
+
+// ---- 購入表：お店のメニューに ✅ を付けて、注文のときに見せる一覧を作る（この端末だけに覚える） ----
+const BK = 'https://chiikawabakery.jp/wp-content/themes/chikawacafe/assets/images/menu-img_';
+const SHOPS = {
+  bakery: {
+    name: 'ちいかわベーカリー（東京）',
+    url: 'https://chiikawabakery.jp/menu/',
+    checked: '2026/11/1',
+    // [画像の番号, 名前, 値段（税込）, 分類, ひとこと]（OSAKA 限定は入れない）
+    menu: [
+      [92, 'ちいかわパン（黒猫）', 660, '期間限定', '栗あん・なくなり次第終了'],
+      [93, 'ハチワレパン（黒猫）', 660, '期間限定', 'ほうじ茶クリーム・なくなり次第終了'],
+      [94, 'うさぎパン（黒猫）', 660, '期間限定', 'かぼちゃあん・なくなり次第終了'],
+      [1, 'ちいかわパン', 590, 'パン', 'カスタードクリーム'],
+      [2, 'ハチワレパン', 590, 'パン', 'チョコレートクリーム'],
+      [3, 'うさぎパン', 590, 'パン', 'キャラメルクリーム'],
+      [80, 'モモンガパン', 590, 'パン', 'いちごとマスカルポーネ'],
+      [81, '古本屋パン', 590, 'パン', 'オレンジとマスカルポーネ'],
+      [49, 'さすまたスティックパイ（ちいかわ）', 620, 'パン'],
+      [50, 'さすまたスティックパイ（ハチワレ）', 620, 'パン'],
+      [51, '討伐棒チーズパン', 570, 'パン'],
+      [12, 'ちいかわ食パン', 950, 'パン', 'はちみつ'],
+      [52, 'ハチワレ食パン', 950, 'パン', 'チョコ'],
+      [53, 'うさぎ食パン', 950, 'パン', 'チーズ'],
+      [13, 'ちいかわ豆食パン', 580, 'パン', '東京限定'],
+      [14, 'ちいかわコロッケバーガー', 670, 'パン', '東京限定'],
+      [15, '郎パン', 2380, 'パン', 'スーベニアどんぶり付き'],
+      [54, 'くりまんじゅうのおつまみカリカリラスク', 650, 'パン'],
+      [16, 'カブトムシワッフル', 480, 'パン', '東京限定'],
+      [17, 'くりまんじゅうパン', 480, 'パン'],
+      [18, 'フィナンシェなトリオ', 990, 'パン'],
+      [37, 'フィナンシェなトリオ（抹茶）', 990, 'パン'],
+      [36, 'フィナンシェなトリオ（チョコ）', 990, 'パン'],
+      [47, '報酬袋焼き', 590, 'パン', 'あんバター'],
+      [48, 'くまさんポシェットパン', 590, 'パン'],
+      [55, 'ちいかわラスク（バターシュガー）', 320, 'パン'],
+      [56, 'ちいかわラスク（メイプルシナモン）', 320, 'パン'],
+      [57, 'ちいかわラスク（うまカレー（鬼））', 320, 'パン'],
+      [91, 'ランチボックス（S）', 770, 'スーベニア', 'パン1つにつき1点まで・食パンは対象外'],
+      [97, 'ランチボックス（M）', 1540, 'スーベニア', 'パン1つにつき1点まで・食パンは対象外'],
+      [95, 'パンプキンスープ', 790, 'ドリンク', '期間限定・なくなり次第終了'],
+      [76, 'ドリンクボトル（ちいかわ）', 1500, 'ドリンク'],
+      [77, 'ドリンクボトル（ハチワレ）', 1500, 'ドリンク'],
+      [78, 'ドリンクボトル（うさぎ）', 1500, 'ドリンク'],
+      [28, 'アイスコーヒー', 590, 'ドリンク'],
+      [29, 'アイスティー', 590, 'ドリンク'],
+      [30, 'アイスカフェラテ', 690, 'ドリンク'],
+      [70, 'ホットカフェラテ', 690, 'ドリンク', 'ラテアート7種から選べる'],
+      [61, 'ホットコーヒー／ホットティー', 590, 'ドリンク'],
+    ].map(([n, name, price, sec, note]) => ({ id: 'b' + n, img: BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, note: note || '' })),
+  },
+};
+let order = { shop: 'bakery', step: 'pick', qty: {} };
+try { order = Object.assign(order, JSON.parse(localStorage.getItem('chiikawa-order') || '{}')); } catch (e) {}
+let shown = null; // 注文の画面に出している品（そこで ✅ を外しても行は残し、押し直せるようにする）
+function saveOrder() { try { localStorage.setItem('chiikawa-order', JSON.stringify(order)); } catch (e) {} }
+const shopMenu = () => (SHOPS[order.shop] || SHOPS.bakery).menu;
+const yen = n => '¥' + n.toLocaleString('ja-JP');
+
+function toggleItem(id) { order.qty[id] ? delete order.qty[id] : order.qty[id] = 1; saveOrder(); renderOrder(); }
+function addQty(id, d, ev) {
+  ev.stopPropagation();
+  const n = (order.qty[id] || 0) + d;
+  n > 0 ? order.qty[id] = n : delete order.qty[id];
+  saveOrder(); renderOrder();
+}
+function setStep(step) {
+  order.step = step;
+  shown = null;
+  saveOrder(); window.scrollTo(0, 0); renderOrder();
+}
+function setShop(v) { order.shop = v; order.qty = {}; setStep('pick'); }
+function clearOrder() { if (confirm('✅ をすべて外しますか？')) { order.qty = {}; setStep('pick'); } }
+
+function renderOrder() {
+  document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px');
+  const shop = SHOPS[order.shop] || SHOPS.bakery, menu = shop.menu;
+  const picked = menu.filter(m => order.qty[m.id]);
+  const sum = picked.reduce((a, m) => a + m.price * order.qty[m.id], 0);
+  const cnt = picked.reduce((a, m) => a + order.qty[m.id], 0);
+  const row = (m, big) => {
+    const q = order.qty[m.id] || 0;
+    return '<div class="mi' + (q ? ' on' : big ? ' off' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
+      + '<div class="ck">' + (q ? '✓' : '') + '</div>'
+      + '<img src="' + esc(m.img) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.visibility=\'hidden\'">'
+      + '<div class="nm">' + esc(m.name) + (m.note && !big ? '<small>' + esc(m.note) + '</small>' : '') + '</div>'
+      + (big ? '<div class="pr">' + (q > 1 ? '×' + q + ' ' : '') + yen(m.price * (q || 1)) + '</div>'
+        : q ? '<div class="qty"><button onclick="addQty(\'' + m.id + '\',-1,event)">−</button><b>' + q + '</b><button onclick="addQty(\'' + m.id + '\',1,event)">＋</button></div>'
+        : '<div class="pr">' + yen(m.price) + '</div>')
+      + '</div>';
+  };
+  const el = document.getElementById('list');
+  if (order.step === 'list') {
+    if (!shown) shown = picked.map(m => m.id);
+    const rows = menu.filter(m => shown.includes(m.id));
+    el.innerHTML = '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'pick\')">‹ メニューへ</button></div>'
+      + '<div class="orderlist">' + (rows.length ? rows.map(m => row(m, true)).join('') : '<p class="empty">✅ を付けたものはありません</p>') + '</div>'
+      + '<div class="row"><button onclick="clearOrder()">✅ をすべて外す</button></div>';
+    return;
+  }
+  let sec = '';
+  el.innerHTML = '<div class="shoprow">お店 <select onchange="setShop(this.value)">'
+      + Object.keys(SHOPS).map(k => '<option value="' + k + '"' + (k === order.shop ? ' selected' : '') + '>' + esc(SHOPS[k].name) + '</option>').join('')
+      + '</select><a href="' + esc(shop.url) + '" target="_blank" rel="noopener">公式メニュー</a></div>'
+    + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点</span><button onclick="setStep(\'list\')"' + (cnt ? '' : ' disabled') + '>注文画面へ ›</button></div>'
+    + menu.map(m => (m.sec !== sec ? '<div class="msec">' + esc(sec = m.sec) + '</div>' : '') + row(m, false)).join('')
+    + '<p class="note">値段は税込（公式メニュー ' + esc(shop.checked) + ' 確認）。品切れや値段が変わることがあるので、お店で確かめてください。</p>';
 }
 
 load();
