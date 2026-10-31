@@ -100,13 +100,17 @@
   .total .cnt { font-size: 13px; }
   .total button { margin-left: auto; background: #fff; color: var(--pink); border: none; font-weight: bold; }
   .total button:disabled { opacity: .6; }
-  .mi.pick { align-items: flex-start; padding: 10px; }
-  .mi.pick .ck { margin-top: 36px; }
-  .mi.pick img { width: 104px; height: 104px; border-radius: 12px; cursor: zoom-in; }
-  .mi.pick .nm { font-weight: bold; }
+  main.wide { max-width: 1120px; }
+  .mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (min-width: 860px) { .mgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+  .mi.pick { position: relative; display: block; padding: 0; overflow: hidden; margin: 0; }
+  .mi.pick img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 0; cursor: zoom-in; }
+  .mi.pick .ck { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.9); border-color: var(--sub); }
+  .mi.pick.on .ck { background: var(--pink); }
+  .mi.pick .nm { display: block; padding: 10px 10px 12px; font-weight: bold; }
   .mi .ds { display: block; font-size: 12px; font-weight: normal; color: var(--sub); line-height: 1.5; margin-top: 3px; }
   .mi .nt { display: block; font-size: 11px; font-weight: normal; color: var(--warn); margin-top: 3px; }
-  .mi .ft { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; min-height: 30px; }
+  .mi .ft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; min-height: 30px; }
   .mi .ft .pr { font-size: 16px; font-weight: bold; }
   .mi .tax { font-size: 11px; font-weight: normal; color: var(--sub); }
   .artrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
@@ -383,6 +387,7 @@ function render() {
   cs.value = calU;
   document.querySelector('.sortrow').hidden = view === 'order';
   if (view === 'order') { renderOrder(); return; }
+  document.getElementById('list').classList.remove('wide');
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
@@ -616,7 +621,7 @@ function renderOrder() {
     }
     // メニューの画面：大きい画像・公式の説明・税込の値段
     const arts = art && q ? Array.from({ length: q }, (_, k) => '<div class="artrow"><span class="artk">' + (q > 1 ? (k + 1) + '杯目' : '絵柄') + '</span>'
-      + art.cx.map((_, i) => artDot(art, i, 36, (order.art[m.id] || [])[k] === i ? 'sel' : '', 'setArt(\'' + m.id + '\',' + k + ',' + i + ',event)')).join('') + '</div>').join('') : '';
+      + art.cx.map((_, i) => artDot(art, i, 34, (order.art[m.id] || [])[k] === i ? 'sel' : '', 'setArt(\'' + m.id + '\',' + k + ',' + i + ',event)')).join('') + '</div>').join('') : '';
     return '<div class="mi pick' + (q ? ' on' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
       + '<div class="ck">' + (q ? '✓' : '') + '</div>' + img(m)
       + '<div class="nm">' + esc(m.name)
@@ -627,6 +632,7 @@ function renderOrder() {
       + '</div>' + arts + '</div></div>';
   };
   const el = document.getElementById('list');
+  el.classList.toggle('wide', order.step !== 'list'); // メニューは横に広く（パソコン4列・スマホ2列）、注文画面は縦1列
   if (order.step === 'list') {
     if (!shown) shown = picked.map(m => m.id);
     const rows = menu.filter(m => shown.includes(m.id));
@@ -635,12 +641,12 @@ function renderOrder() {
       + '<div class="row"><button onclick="clearOrder()">✅ をすべて外す</button></div>';
     return;
   }
-  let sec = '';
   el.innerHTML = '<div class="shoprow">お店 <select onchange="setShop(this.value)">'
       + Object.keys(SHOPS).map(k => '<option value="' + k + '"' + (k === order.shop ? ' selected' : '') + '>' + esc(SHOPS[k].name) + '</option>').join('')
       + '</select><a href="' + esc(shop.url) + '" target="_blank" rel="noopener">公式メニュー</a></div>'
     + '<div class="total"><span class="yen">' + yen(sum) + '</span><span class="cnt">' + cnt + '点（税込）</span><button onclick="setStep(\'list\')"' + (cnt ? '' : ' disabled') + '>注文画面へ ›</button></div>'
-    + menu.map(m => (m.sec !== sec ? '<div class="msec">' + esc(sec = m.sec) + '</div>' : '') + row(m, false)).join('')
+    + [...new Set(menu.map(m => m.sec))].map(s => '<div class="msec">' + esc(s) + '</div><div class="mgrid">'
+      + menu.filter(m => m.sec === s).map(m => row(m, false)).join('') + '</div>').join('')
     + '<p class="note">値段は税込（公式メニュー ' + esc(shop.checked) + ' 確認）。品切れや値段が変わることがあるので、お店で確かめてください。</p>';
 }
 
