@@ -113,13 +113,17 @@
   .mi .ft { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; min-height: 30px; }
   .mi .ft .pr { font-size: 16px; font-weight: bold; }
   .mi .tax { font-size: 11px; font-weight: normal; color: var(--sub); }
-  .artrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
-  .artk { font-size: 11px; font-weight: normal; color: var(--sub); width: 100%; }
-  .art { display: inline-block; border-radius: 50%; background-repeat: no-repeat; border: 2px solid transparent; flex: 0 0 auto; }
-  .artrow .art { cursor: pointer; border-color: var(--line); }
-  .artrow .art.sel { border-color: var(--pink); box-shadow: 0 0 0 2px var(--pink); }
-  .arts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-  .art.none { width: 40px; height: 40px; font-size: 9px; font-weight: normal; color: var(--sub); border: 1px dashed var(--sub); display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
+  .mi.pick.wide2 { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  @media (min-width: 860px) { .mi.pick.wide2 { grid-column: span 2; } }
+  .artbox { grid-column: 1 / -1; padding: 0 10px 12px; }
+  .artrow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  @media (min-width: 860px) { .artrow { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+  .artk { grid-column: 1 / -1; font-size: 13px; font-weight: bold; color: var(--sub); }
+  .art { display: inline-block; width: 56px; aspect-ratio: 1; border-radius: 50%; background-repeat: no-repeat; border: 2px solid transparent; flex: 0 0 auto; }
+  .artrow .art { width: 100%; cursor: pointer; border: 3px solid var(--line); }
+  .artrow .art.sel { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink); }
+  .arts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .art.none { font-size: 10px; font-weight: normal; color: var(--sub); border: 1px dashed var(--sub); display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
   .orderlist .mi img { width: 44px; height: 44px; }
   .orderlist .mi .nm { font-size: 18px; font-weight: bold; }
   .note { font-size: 11px; color: var(--sub); margin-top: 14px; line-height: 1.6; }
@@ -553,7 +557,7 @@ const SHOPS = {
       [61, 'ホットコーヒー/ホットティー', 590, 'ドリンク'],
     ].map(([n, name, price, sec, desc, note]) => ({ id: 'b' + n, img: BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, desc: desc || '', note: note || '' })),
     // ホットカフェラテのラテアート：公式の写真（1000×667）の上に並ぶ7つの丸を切り抜いて出す
-    arts: { b70: { img: BK + '70.jpg', w: 1000, h: 667, d: 122, cy: 79, cx: [80, 221, 362, 503, 644, 784, 940] } },
+    arts: { b70: { img: BK + '70.jpg', w: 1000, h: 667, d: 120, cy: 79, cx: [77, 218, 359, 500, 641, 781, 937] } },
   },
 };
 let order = { shop: 'bakery', step: 'pick', qty: {}, art: {} };
@@ -584,12 +588,11 @@ function setArt(id, k, i, ev) {
   a[k] = a[k] === i ? null : i;
   saveOrder(); renderOrder();
 }
-// 写真の i 番目の丸を、直径 size px の丸として切り抜く
-function artDot(art, i, size, cls, click) {
-  const s = size / art.d;
-  return '<span class="art' + (cls ? ' ' + cls : '') + '"' + (click ? ' onclick="' + click + '"' : '') + ' style="width:' + size + 'px;height:' + size + 'px;'
-    + 'background-image:url(\'' + art.img + '\');background-size:' + (art.w * s).toFixed(1) + 'px ' + (art.h * s).toFixed(1) + 'px;'
-    + 'background-position:' + (-(art.cx[i] - art.d / 2) * s).toFixed(1) + 'px ' + (-(art.cy - art.d / 2) * s).toFixed(1) + 'px"></span>';
+// 写真の i 番目の丸を切り抜く（大きさは CSS で決める。割合で指定するので、どの大きさでも同じ所が出る）
+function artDot(art, i, cls, click) {
+  return '<span class="art' + (cls ? ' ' + cls : '') + '"' + (click ? ' onclick="' + click + '"' : '') + ' style="'
+    + 'background-image:url(\'' + art.img + '\');background-size:' + (art.w / art.d * 100).toFixed(1) + '% ' + (art.h / art.d * 100).toFixed(1) + '%;'
+    + 'background-position:' + ((art.cx[i] - art.d / 2) / (art.w - art.d) * 100).toFixed(2) + '% ' + ((art.cy - art.d / 2) / (art.h - art.d) * 100).toFixed(2) + '%"></span>';
 }
 
 function renderOrder() {
@@ -608,21 +611,22 @@ function renderOrder() {
       return '<div class="mi' + (q ? ' on' : ' off') + '" onclick="toggleItem(\'' + m.id + '\')">'
         + '<div class="ck">' + (q ? '✓' : '') + '</div>' + img(m)
         + '<div class="nm">' + esc(m.name)
-        + (art && q ? '<span class="arts">' + Array.from({ length: q }, (_, k) => chosen[k] != null ? artDot(art, chosen[k], 40) : '<span class="art none">絵柄<br>未定</span>').join('') + '</span>' : '')
+        + (art && q ? '<span class="arts">' + Array.from({ length: q }, (_, k) => chosen[k] != null ? artDot(art, chosen[k]) : '<span class="art none">絵柄<br>未定</span>').join('') + '</span>' : '')
         + '</div>'
         + '<div class="pr">' + (q > 1 ? '×' + q + ' ' : '') + yen(m.price * (q || 1)) + '</div></div>';
     }
     // メニューの画面：大きい画像・公式の説明・税込の値段
-    const arts = art && q ? Array.from({ length: q }, (_, k) => '<div class="artrow"><span class="artk">' + (q > 1 ? (k + 1) + '杯目' : '絵柄') + '</span>'
-      + art.cx.map((_, i) => artDot(art, i, 34, (order.art[m.id] || [])[k] === i ? 'sel' : '', 'setArt(\'' + m.id + '\',' + k + ',' + i + ',event)')).join('') + '</div>').join('') : '';
-    return '<div class="mi pick' + (q ? ' on' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
+    // ラテアートは ✅ を付けるとカードを横に広げて、絵柄を大きく並べる
+    const arts = art && q ? '<div class="artbox">' + Array.from({ length: q }, (_, k) => '<div class="artrow"><span class="artk">' + (q > 1 ? (k + 1) + '杯目の絵柄' : '絵柄を選ぶ') + '</span>'
+      + art.cx.map((_, i) => artDot(art, i, (order.art[m.id] || [])[k] === i ? 'sel' : '', 'setArt(\'' + m.id + '\',' + k + ',' + i + ',event)')).join('') + '</div>').join('') + '</div>' : '';
+    return '<div class="mi pick' + (q ? ' on' : '') + (arts ? ' wide2' : '') + '" onclick="toggleItem(\'' + m.id + '\')">'
       + '<div class="ck">' + (q ? '✓' : '') + '</div>' + img(m)
       + '<div class="nm">' + esc(m.name)
       + (m.desc ? '<span class="ds">' + esc(m.desc) + '</span>' : '')
       + (m.note ? '<span class="nt">※' + esc(m.note) + '</span>' : '')
       + '<div class="ft"><span class="pr">' + yen(m.price) + '<span class="tax">（税込）</span></span>'
       + (q ? '<span class="qty"><button onclick="addQty(\'' + m.id + '\',-1,event)">−</button><b>' + q + '</b><button onclick="addQty(\'' + m.id + '\',1,event)">＋</button></span>' : '')
-      + '</div>' + arts + '</div></div>';
+      + '</div></div>' + arts + '</div>';
   };
   const el = document.getElementById('list');
   el.classList.toggle('wide', order.step !== 'list'); // メニューは横に広く（パソコン4列・スマホ2列）、注文画面は縦1列
