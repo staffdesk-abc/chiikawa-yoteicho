@@ -38,7 +38,11 @@
   .badge.new { background: var(--pink); color: #fff; font-weight: bold; }
   .badge.lottery { background: var(--blue-soft); }
   .badge.first { background: var(--pink-soft); }
-  .badge.done { background: var(--green-soft); }
+  .badge.done { background: #3f9a5e; color: #fff; font-weight: bold; }
+  /* 応募済みはひと目でわかるように：緑の枠と上の帯 */
+  .card.applied { border: 3px solid #3f9a5e; }
+  .appliedbar { background: #3f9a5e; color: #fff; font-weight: bold; font-size: 15px; text-align: center; padding: 6px; letter-spacing: .1em; }
+  .card.past .appliedbar { background: #6f8a76; }
   .title { font-size: 21px; font-weight: bold; margin: 14px 0 10px; line-height: 1.45; }
   .when { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 14px; margin-bottom: 8px; align-items: baseline; }
   .when dt { color: var(--sub); }
@@ -415,7 +419,9 @@ function card(it) {
   const statusBadge = (isPast(it) ? '<span class="badge end">終了</span>' : '') + (it.status === '応募済み' ? '<span class="badge done">✓ 応募済み</span>'
     : it.status === '見送り' ? '<span class="badge">見送り</span>'
     : it.status === '新着' && !isPast(it) ? '<span class="badge new">NEW</span>' : '');
-  return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + '">' + imgs + '<div class="body">'
+  const applied = it.status === '応募済み';
+  return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + (applied ? ' applied' : '') + '">'
+    + (applied ? '<div class="appliedbar">✓ 応募済み</div>' : '') + imgs + '<div class="body">'
     + '<div class="badges">' + statusBadge
     + (it.type ? '<span class="badge ' + typeCls + '">' + esc(it.type.replace(/^(気になる|トレンド)/, '')) + '</span>' : '')
     + (it.venue ? '<span class="badge">' + esc(it.venue) + '</span>' : '')
