@@ -439,6 +439,19 @@ function render() {
   el.innerHTML = list.map(card).join('');
 }
 
+// 内容欄を読みやすく：先頭の料金・手帳・付き添い／要確認／話題／案内／開館・休館 のまとまりごとに1行あける
+function detailBlocks(s) {
+  let prev = null, head = true;
+  return String(s).split('\n').filter(l => l.trim()).map(l => {
+    head = head && /^(料金|障害者手帳割引|付き添い)：/.test(l);
+    const g = head ? 'head' : /^【要確認】/.test(l) ? 'check' : /^(なぜ話題か|話題の理由|話題)[：:]/.test(l) ? 'topic'
+      : /休館|^開館|^締め切りは/.test(l) ? 'hours' : 'body';
+    const out = (prev && g !== prev ? '\n' : '') + l;
+    prev = g;
+    return out;
+  }).join('\n');
+}
+
 function card(it) {
   const typeCls = /抽選/.test(it.type) ? 'lottery' : /先着/.test(it.type) ? 'first' : '';
   const imgs = it.images.length ? '<div class="imgs">' + it.images.map(u =>
@@ -465,7 +478,7 @@ function card(it) {
     + (it.deadline ? '<dt>締め切り</dt><dd>' + fmt(it.deadline) + (leftDl ? '<span class="left">' + leftDl + '</span>' : '') + '</dd>' : '')
     + (it.period ? '<dt>' + (hold ? '開催期間' : '対象期間') + '</dt><dd>' + esc(it.period) + '</dd>' : '')
     + '</dl>'
-    + (it.detail ? '<p class="detail">' + esc(it.detail) + '</p>' : '')
+    + (it.detail ? '<p class="detail">' + esc(detailBlocks(it.detail)) + '</p>' : '')
     + '<div class="links">' + it.links.map(linkHtml).join('') + '</div>'
     + '<div class="row">'
     + (parseDate(it.saleStart) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'start')) + '">📅 開始をカレンダーへ</a>' : '')
