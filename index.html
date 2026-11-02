@@ -460,7 +460,8 @@ function card(it) {
     + (hold ? '<div class="hold ' + hold.cls + '"><b>' + hold.label + '</b><span>' + hold.note + '</span></div>' : '')
     + '<div class="title">' + esc(it.title) + '</div>'
     + '<dl class="when">'
-    + '<dt>' + startLabel + '</dt><dd><span class="big">' + fmt(it.saleStart) + '</span>' + (left ? '<span class="left">' + left + '</span>' : '') + '</dd>'
+    + (it.saleStart ? '<dt>' + startLabel + '</dt><dd><span class="big">' + fmt(it.saleStart) + '</span>' + (left ? '<span class="left">' + left + '</span>' : '') + '</dd>'
+      : isPast(it) ? '' : '<dt>' + startLabel + '</dt><dd><span class="big">' + (it.type === 'グッズ新商品' ? '発売日未定' : '開始日未定') + '</span></dd>')
     + (it.deadline ? '<dt>締め切り</dt><dd>' + fmt(it.deadline) + (leftDl ? '<span class="left">' + leftDl + '</span>' : '') + '</dd>' : '')
     + (it.period ? '<dt>' + (hold ? '開催期間' : '対象期間') + '</dt><dd>' + esc(it.period) + '</dd>' : '')
     + '</dl>'
