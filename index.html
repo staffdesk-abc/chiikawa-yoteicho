@@ -99,7 +99,7 @@
   .shoprow a { margin-left: auto; color: var(--blue); text-decoration: none; white-space: nowrap; }
   .msec { font-size: 14px; font-weight: bold; color: var(--sub); margin: 18px 0 8px; }
   .mi { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; user-select: none; }
-  .mi img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: 0 0 auto; background: var(--gray-soft); }
+  .mi img, .mi .mimg { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; flex: 0 0 auto; background-color: var(--gray-soft); }
   .mi .nm { flex: 1; min-width: 0; font-size: 15px; line-height: 1.35; }
   .mi .nm small { display: block; font-size: 11px; color: var(--sub); }
   .mi .pr { font-size: 14px; white-space: nowrap; }
@@ -119,7 +119,7 @@
   .mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   @media (min-width: 860px) { .mgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
   .mi.pick { position: relative; display: block; padding: 0; overflow: hidden; margin: 0; }
-  .mi.pick img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 0; cursor: zoom-in; }
+  .mi.pick img, .mi.pick .mimg { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 0; cursor: zoom-in; }
   .mi.pick .ck { position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,.9); border-color: var(--sub); }
   .mi.pick.on .ck { background: var(--pink); }
   .mi.pick .nm { display: block; padding: 10px 10px 12px; font-weight: bold; }
@@ -139,7 +139,7 @@
   .artrow .art.sel { border-color: var(--pink); box-shadow: 0 0 0 3px var(--pink); }
   .arts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .art.none { font-size: 10px; font-weight: normal; color: var(--sub); border: 1px dashed var(--sub); display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
-  .orderlist .mi img { width: 44px; height: 44px; }
+  .orderlist .mi img, .orderlist .mi .mimg { width: 44px; height: 44px; }
   .orderlist .mi .nm { font-size: 18px; font-weight: bold; }
   .note { font-size: 11px; color: var(--sub); margin-top: 14px; line-height: 1.6; }
 </style>
@@ -575,16 +575,21 @@ function demoApi() {
 
 // ---- 購入表：お店のメニューに ✅ を付けて、注文のときに見せる一覧を作る（この端末だけに覚える） ----
 const BK = 'https://chiikawabakery.jp/wp-content/themes/chikawacafe/assets/images/menu-img_';
+// サンタパンは公式メニューに個別の写真がまだないので、お知らせの3個並びの写真（2048×1537）から1個ずつ切り抜いて出す
+const SANTA = { img: 'https://chiikawabakery.jp/wp-content/uploads/2026/10/all_1_v4-1536x1153.png', w: 2048, h: 1537, d: 640 };
 const SHOPS = {
   bakery: {
     name: 'ちいかわベーカリー（東京）',
     url: 'https://chiikawabakery.jp/menu/',
     checked: '2026/11/1',
-    // [画像の番号, 名前, 値段（税込）, 分類, 公式の説明, 注意]（OSAKA 限定と、グッズ売り場にあるラスク・フィナンシェは入れない）
+    // [画像の番号, 名前, 値段（税込）, 分類, 公式の説明, 注意, 写真の切り抜きの中心]（OSAKA 限定と、グッズ売り場にあるラスク・フィナンシェは入れない）
     menu: [
       [92, 'ちいかわパン（黒猫）', 660, '期間限定', '栗あんがつまった秋限定のちいかわパン', '10/2（金）〜なくなり次第終了'],
       [93, 'ハチワレパン（黒猫）', 660, '期間限定', 'ほうじ茶クリームがつまった秋限定のハチワレパン', '10/2（金）〜なくなり次第終了'],
       [94, 'うさぎパン（黒猫）', 660, '期間限定', 'かぼちゃあんがつまった秋限定のうさぎパン', '10/2（金）〜なくなり次第終了'],
+      ['s1', 'ちいかわパン（サンタ）', 660, '期間限定', 'きのこシチューがつまった冬限定のちいかわパン', '11/13（金）〜12/27（日）・なくなり次第終了・3個でオリジナルBOX', [1045, 964]],
+      ['s2', 'ハチワレパン（サンタ）', 660, '期間限定', 'いちごミルクがつまった冬限定のハチワレパン', '11/13（金）〜12/27（日）・なくなり次第終了・3個でオリジナルBOX', [534, 797]],
+      ['s3', 'うさぎパン（サンタ）', 660, '期間限定', 'チーズクリームがつまった冬限定のうさぎパン', '11/13（金）〜12/27（日）・なくなり次第終了・3個でオリジナルBOX', [1545, 811]],
       [1, 'ちいかわパン', 590, 'パン', 'カスタードクリームがつまったちいかわパン'],
       [2, 'ハチワレパン', 590, 'パン', 'チョコレートクリームがつまったハチワレパン'],
       [3, 'うさぎパン', 590, 'パン', 'キャラメルクリームがつまったうさぎパン'],
@@ -614,7 +619,7 @@ const SHOPS = {
       [30, 'アイスカフェラテ', 690, 'ドリンク'],
       [70, 'ホットカフェラテ', 690, 'ドリンク', 'ラテアート7種からお好きな絵柄をお選びいただけます。'],
       [61, 'ホットコーヒー/ホットティー', 590, 'ドリンク'],
-    ].map(([n, name, price, sec, desc, note]) => ({ id: 'b' + n, img: BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, desc: desc || '', note: note || '' })),
+    ].map(([n, name, price, sec, desc, note, crop]) => ({ id: 'b' + n, img: crop ? SANTA.img : BK + String(n).padStart(2, '0') + '.jpg', name, price, sec, desc: desc || '', note: note || '', crop })),
     // ホットカフェラテのラテアート：公式の写真（1000×667）の上に並ぶ7つの丸を切り抜いて出す
     arts: { b70: { img: BK + '70.jpg', w: 1000, h: 667, d: 120, cy: 79, cx: [77, 218, 359, 500, 641, 781, 937] } },
   },
@@ -724,7 +729,11 @@ function renderOrder() {
   const picked = menu.filter(m => order.qty[m.id]);
   const sum = picked.reduce((a, m) => a + m.price * order.qty[m.id], 0);
   const cnt = picked.reduce((a, m) => a + order.qty[m.id], 0);
-  const img = m => '<img src="' + esc(m.img) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.visibility=\'hidden\'"'
+  const img = m => m.crop
+    ? '<span class="mimg" onclick="event.stopPropagation();zoom(\'' + esc(m.img) + '\')" style="cursor:zoom-in;background-image:url(\'' + esc(m.img) + '\');'
+      + 'background-size:' + (SANTA.w / SANTA.d * 100).toFixed(1) + '% ' + (SANTA.h / SANTA.d * 100).toFixed(1) + '%;'
+      + 'background-position:' + ((m.crop[0] - SANTA.d / 2) / (SANTA.w - SANTA.d) * 100).toFixed(2) + '% ' + ((m.crop[1] - SANTA.d / 2) / (SANTA.h - SANTA.d) * 100).toFixed(2) + '%"></span>'
+    : '<img src="' + esc(m.img) + '" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.visibility=\'hidden\'"'
     + ' onclick="event.stopPropagation();zoom(this.src)">';
   // 注文の画面：小さい画像・名前・値段。ラテアートは選んだ絵柄を並べる
   const row = (m, big) => {
