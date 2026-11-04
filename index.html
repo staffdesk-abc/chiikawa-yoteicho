@@ -151,6 +151,8 @@
   <nav class="tabs">
     <button data-view="event" onclick="setView('event')">🎪 ちいかわイベント</button>
     <button data-view="goods" onclick="setView('goods')">🛍️ ちいかわグッズ</button>
+    <button data-view="arcade" onclick="setView('arcade')">🕹️ ちいかわゲーセン</button>
+    <button data-view="gacha" onclick="setView('gacha')">🥚 ちいかわガチャ</button>
     <button data-view="interest" onclick="setView('interest')">👀 気になる</button>
     <button data-view="trend" onclick="setView('trend')">🔥 トレンド</button>
     <button data-view="fav" onclick="setView('fav')">⭐ お気に入り</button>
@@ -179,7 +181,7 @@
     <label>タイトル *</label><input name="title" required placeholder="例：ちいかわレストラン 予約整理券（12月分）">
     <div class="two">
       <div><label>会場</label><input name="venue" placeholder="池袋PARCO"></div>
-      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option><option>気になる抽選</option><option>気になる先着</option><option>気になるグッズ</option><option>気になるその他</option><option>トレンド抽選</option><option>トレンド先着</option><option>トレンドその他</option></select></div>
+      <div><label>種別</label><select name="type"><option>抽選</option><option>先着</option><option>その他</option><option>グッズ抽選</option><option>グッズ先着</option><option>グッズ受注</option><option>グッズ新商品</option><option>ゲーセン</option><option>ガチャ</option><option>気になる抽選</option><option>気になる先着</option><option>気になるグッズ</option><option>気になるその他</option><option>トレンド抽選</option><option>トレンド先着</option><option>トレンドその他</option></select></div>
     </div>
     <div class="two">
       <div><label>販売・受付開始 *</label><input name="saleStart" type="datetime-local" required></div>
@@ -200,9 +202,9 @@
 const STATUS_BTNS = ['応募済み', '見送り'];
 let items = [];
 // 種別の頭で一覧を分ける（スプレッドシートは1つのまま）
-// 「グッズ〜」→ グッズ、「気になる〜」→ ちいかわ以外の気になるもの、「トレンド〜」→ 話題のもの、それ以外 → イベント
-const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^気になる/.test(it.type || '') ? 'interest' : /^トレンド/.test(it.type || '') ? 'trend' : 'event';
-const VIEWS = ['event', 'goods', 'interest', 'trend', 'fav', 'order'];
+// 「グッズ〜」→ グッズ、「ゲーセン」→ ゲームセンターの景品、「ガチャ」→ カプセルトイ、「気になる〜」→ ちいかわ以外の気になるもの、「トレンド〜」→ 話題のもの、それ以外 → イベント
+const viewOf = it => /^グッズ/.test(it.type || '') ? 'goods' : /^ゲーセン/.test(it.type || '') ? 'arcade' : /^ガチャ/.test(it.type || '') ? 'gacha' : /^気になる/.test(it.type || '') ? 'interest' : /^トレンド/.test(it.type || '') ? 'trend' : 'event';
+const VIEWS = ['event', 'goods', 'arcade', 'gacha', 'interest', 'trend', 'fav', 'order'];
 
 // お気に入りはこの端末だけに覚える（2人それぞれ別）
 let favs = new Set();
@@ -344,7 +346,7 @@ function periodDays(p, saleStart) {
 }
 // 開催中／開催前。対象期間が日付で始まるイベントだけ（お届け・発送・発売の予定には出さない）。終わったものは「終了」に任せる
 function holdState(it) {
-  if (/グッズ/.test(it.type) || !/^\s*\d{4}\D\d{1,2}\D\d{1,2}/.test(it.period || '') || isPast(it)) return null;
+  if (/グッズ|ゲーセン|ガチャ/.test(it.type) || !/^\s*\d{4}\D\d{1,2}\D\d{1,2}/.test(it.period || '') || isPast(it)) return null;
   const ds = periodDays(it.period, it.saleStart);
   const start = parseDate(it.period), last = ds[ds.length - 1];
   const md = d => (d.getMonth() + 1) + '/' + d.getDate() + '(' + WD[d.getDay()] + ')';
@@ -365,7 +367,7 @@ function calUrl(it, which) {
   const p = n => String(n).padStart(2, '0');
   const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
   const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
-  const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ/.test(it.type) ? '【発売】' : '【開始】');
+  const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ|ガチャ/.test(it.type) ? '【発売】' : it.type === 'ゲーセン' ? '【登場】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&authuser=' + encodeURIComponent(calU)
@@ -435,7 +437,7 @@ function render() {
   const list = items.filter(it => view === 'fav' ? favs.has(it.id) : viewOf(it) === view)
     .sort((a, b) => (later(a) - later(b)) || (SORTS[sortBy] || SORTS.start)(a, b));
   const el = document.getElementById('list');
-  if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', interest: '気になる情報はまだありません', trend: 'トレンドの情報はまだありません', fav: '☆ を押したものがここに集まります' }[view] || 'まだ何もありません') + '</p>'; return; }
+  if (!list.length) { el.innerHTML = '<p class="empty">' + ({ goods: 'グッズの情報はまだありません', arcade: 'ゲーセンの情報はまだありません', gacha: 'ガチャの情報はまだありません', interest: '気になる情報はまだありません', trend: 'トレンドの情報はまだありません', fav: '☆ を押したものがここに集まります' }[view] || 'まだ何もありません') + '</p>'; return; }
   el.innerHTML = list.map(card).join('');
 }
 
@@ -463,7 +465,7 @@ function card(it) {
     : it.status === '新着' && !isPast(it) ? '<span class="badge new">NEW</span>' : '');
   const applied = it.status === '応募済み';
   const hold = holdState(it);
-  const startLabel = it.type === 'グッズ新商品' ? '発売' : /抽選|先着|受注/.test(it.type) ? '受付開始' : '開始';
+  const startLabel = it.type === 'グッズ新商品' || it.type === 'ガチャ' ? '発売' : it.type === 'ゲーセン' ? '登場' : /抽選|先着|受注/.test(it.type) ? '受付開始' : '開始';
   return '<article class="card' + (isPast(it) || it.status === '見送り' ? ' past' : '') + (applied ? ' applied' : '') + '">'
     + (applied ? '<div class="appliedbar">✓ 応募済み</div>' : '') + imgs + '<div class="body">'
     + '<div class="badges">' + statusBadge
@@ -474,7 +476,7 @@ function card(it) {
     + '<div class="title">' + esc(it.title) + '</div>'
     + '<dl class="when">'
     + (it.saleStart ? '<dt>' + startLabel + '</dt><dd><span class="big">' + fmt(it.saleStart) + '</span>' + (left ? '<span class="left">' + left + '</span>' : '') + '</dd>'
-      : isPast(it) ? '' : '<dt>' + startLabel + '</dt><dd><span class="big">' + (it.type === 'グッズ新商品' ? '発売日未定' : '開始日未定') + '</span></dd>')
+      : isPast(it) ? '' : '<dt>' + startLabel + '</dt><dd><span class="big">' + (it.type === 'グッズ新商品' || it.type === 'ガチャ' ? '発売日未定' : it.type === 'ゲーセン' ? '登場日未定' : '開始日未定') + '</span></dd>')
     + (it.deadline ? '<dt>締め切り</dt><dd>' + fmt(it.deadline) + (leftDl ? '<span class="left">' + leftDl + '</span>' : '') + '</dd>' : '')
     + (it.period ? '<dt>' + (hold ? '開催期間' : '対象期間') + '</dt><dd>' + esc(it.period) + '</dd>' : '')
     + '</dl>'
@@ -525,7 +527,7 @@ function zoom(src) {
 
 function openAdd() {
   document.getElementById('addMsg').textContent = '';
-  document.querySelector('#addForm [name=type]').value = ({ goods: 'グッズ抽選', interest: '気になる抽選', trend: 'トレンドその他' }[view] || '抽選');
+  document.querySelector('#addForm [name=type]').value = ({ goods: 'グッズ抽選', arcade: 'ゲーセン', gacha: 'ガチャ', interest: '気になる抽選', trend: 'トレンドその他' }[view] || '抽選');
   addDlg.showModal();
 }
 
