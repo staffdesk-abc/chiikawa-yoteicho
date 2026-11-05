@@ -295,8 +295,20 @@ document.addEventListener('visibilitychange', () => {
 
 function load() {
   loadedAt = Date.now();
-  api.call('getItems').then(list => { items = list; render(); })
+  api.call('getItems').then(list => {
+    list.forEach(it => { it.start = fixSerial(it.start); it.deadline = fixSerial(it.deadline); });
+    items = list;
+    render();
+  })
     .catch(e => { if (view !== 'order') document.getElementById('list').innerHTML = '<p class="empty">読み込めませんでした：' + esc(e.message || e) + '</p>'; });
+}
+
+// スプレッドシートの日付が数字（46332.83333）のまま届いたときは、日付の文字に戻す
+function fixSerial(s) {
+  if (!/^\d{5}(\.\d+)?$/.test(String(s || ''))) return s;
+  const d = new Date(Math.round(Number(s) * 1440) * 60000 - 25569 * 86400000);
+  const p = n => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + '/' + p(d.getUTCMonth() + 1) + '/' + p(d.getUTCDate()) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
 }
 
 function parseDate(s) {
