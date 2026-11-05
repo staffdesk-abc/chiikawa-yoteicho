@@ -296,7 +296,7 @@ document.addEventListener('visibilitychange', () => {
 function load() {
   loadedAt = Date.now();
   api.call('getItems').then(list => {
-    list.forEach(it => { it.start = fixSerial(it.start); it.deadline = fixSerial(it.deadline); });
+    list.forEach(it => { it.saleStart = fixSerial(it.saleStart); it.deadline = fixSerial(it.deadline); });
     items = list;
     render();
   })
@@ -373,13 +373,26 @@ function holdState(it) {
   return { cls: 'now', label: '開催中', note: n === 0 ? '今日まで' : md(last) + 'まで・あと' + n + '日' };
 }
 
+// もう買えるトレンド（販売中・開始を過ぎた）は、行く日を自分で決めてカレンダーに入れられる
+function canPlan(it) {
+  if (!/^トレンド/.test(it.type || '') || isPast(it)) return false;
+  const s = parseDate(it.saleStart);
+  return it.saleStart === '販売中' || !!(s && s <= new Date());
+}
+// カレンダーの入力画面の初期値：10時。まだ始まっていなければ開催の初日、始まっていれば今日
+function planDate(it) {
+  const now = new Date();
+  const first = /^\s*\d{4}\D/.test(it.period || '') ? parseDate(it.period) : null;
+  const d = first && first > now ? first : now;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10, 0);
+}
+
 function calUrl(it, which) {
-  const s = which === 'deadline' ? it.deadline : it.saleStart;
-  const d = parseDate(s);
+  const d = which === 'plan' ? planDate(it) : parseDate(which === 'deadline' ? it.deadline : it.saleStart);
   const p = n => String(n).padStart(2, '0');
   const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
   const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
-  const label = which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ|ガチャ/.test(it.type) ? '【発売】' : it.type === 'ゲーセン' ? '【登場】' : '【開始】');
+  const label = which === 'plan' ? '【予定】' : which === 'deadline' ? '【締切】' : (/抽選/.test(it.type) ? '【抽選受付開始】' : /先着/.test(it.type) ? '【先着販売開始】' : it.type === 'グッズ受注' ? '【受注開始】' : /グッズ新商品|気になるグッズ|ガチャ/.test(it.type) ? '【発売】' : it.type === 'ゲーセン' ? '【登場】' : '【開始】');
   const details = [it.period && '対象期間：' + it.period, it.detail, ...(it.links || [])].filter(Boolean).join('\n');
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&authuser=' + encodeURIComponent(calU)
@@ -495,6 +508,7 @@ function card(it) {
     + (it.detail ? '<p class="detail">' + esc(detailBlocks(it.detail)) + '</p>' : '')
     + '<div class="links">' + it.links.map(linkHtml).join('') + '</div>'
     + '<div class="row">'
+    + (canPlan(it) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'plan')) + '">📅 行く日をカレンダーへ</a>' : '')
     + (parseDate(it.saleStart) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'start')) + '">📅 開始をカレンダーへ</a>' : '')
     + (parseDate(it.deadline) ? '<a class="btn cal" target="_blank" href="' + esc(calUrl(it, 'deadline')) + '">📅 締め切りをカレンダーへ</a>' : '')
     + '<a class="btn line" target="_blank" href="' + esc(lineUrl(it)) + '">LINE で送る</a>'
