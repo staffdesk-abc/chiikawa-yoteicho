@@ -388,7 +388,10 @@ function planDate(it) {
 }
 
 function calUrl(it, which) {
-  const d = which === 'plan' ? planDate(it) : parseDate(which === 'deadline' ? it.deadline : it.saleStart);
+  const s = which === 'deadline' ? it.deadline : it.saleStart;
+  const d = which === 'plan' ? planDate(it) : parseDate(s);
+  // 時刻が書かれていない日付は 10:00 にする
+  if (which !== 'plan' && !/\d{1,2}:\d{2}/.test(String(s))) d.setHours(10, 0, 0, 0);
   const p = n => String(n).padStart(2, '0');
   const f = x => x.getFullYear() + p(x.getMonth() + 1) + p(x.getDate()) + 'T' + p(x.getHours()) + p(x.getMinutes()) + '00';
   const end = new Date(d.getTime() + 60 * 60000); // 1時間（カレンダーで題名が読める長さ）
